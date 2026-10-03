@@ -1,0 +1,25 @@
+{
+  "fetched_on": "2026-10-03",
+  "notes": "Catalog is the refresh source of truth. src/00_refresh_prices.py re-fetches the source pages and fails if a published price needle disappears.",
+  "on_demand": [
+    {"provider": "Azure OpenAI", "model": "GPT-4o", "tier": "mid", "input_per_mtok": 2.5, "output_per_mtok": 10.0, "source_url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "confidence": "snapshot"},
+    {"provider": "Azure OpenAI", "model": "GPT-5", "tier": "flagship", "input_per_mtok": 1.25, "output_per_mtok": 10.0, "source_url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "confidence": "snapshot"},
+    {"provider": "Azure OpenAI", "model": "GPT-4o-mini", "tier": "budget", "input_per_mtok": 0.15, "output_per_mtok": 0.6, "source_url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "confidence": "snapshot"},
+    {"provider": "AWS Bedrock", "model": "Claude Sonnet 5", "tier": "flagship", "input_per_mtok": 3.0, "output_per_mtok": 15.0, "source_url": "https://aws.amazon.com/bedrock/pricing/", "confidence": "snapshot"},
+    {"provider": "AWS Bedrock", "model": "Claude Sonnet 4.6", "tier": "mid", "input_per_mtok": 3.0, "output_per_mtok": 15.0, "source_url": "https://aws.amazon.com/bedrock/pricing/", "confidence": "snapshot"},
+    {"provider": "AWS Bedrock", "model": "Claude Haiku 4.5", "tier": "budget", "input_per_mtok": 1.0, "output_per_mtok": 5.0, "source_url": "https://aws.amazon.com/bedrock/pricing/", "confidence": "snapshot"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 3.1 Pro", "tier": "flagship", "input_per_mtok": 2.0, "output_per_mtok": 12.0, "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing", "confidence": "snapshot"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 2.5 Flash", "tier": "mid", "input_per_mtok": 0.3, "output_per_mtok": 2.5, "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing", "confidence": "snapshot"}
+  ],
+  "committed": [
+    {"provider": "Azure OpenAI", "model": "GPT-4o", "unit_name": "PTU", "term": "hourly", "hourly_rate": 1.0, "tpm_capacity": 2500, "needles": ["$1.00 per hour"], "throughput_note": "Global PTU hourly. GPT-4o input TPM per PTU = 2,500.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
+    {"provider": "Azure OpenAI", "model": "GPT-4o", "unit_name": "PTU", "term": "1-month", "hourly_rate": 0.3562, "tpm_capacity": 2500, "needles": ["$260 per month"], "throughput_note": "1-month reservation $260/PTU-month / 730h.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
+    {"provider": "Azure OpenAI", "model": "GPT-4o", "unit_name": "PTU", "term": "1-year", "hourly_rate": 0.3027, "tpm_capacity": 2500, "needles": ["$221 per month"], "throughput_note": "1-year reservation $221/PTU-month / 730h.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 2.5 Flash", "unit_name": "GSU", "term": "1-week", "hourly_rate": 7.1429, "tpm_capacity": 161400, "needles": ["$1,200"], "throughput_note": "Published $1,200/GSU-week. 2,690 burndown tokens/sec per GSU.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 2.5 Flash", "unit_name": "GSU", "term": "1-month", "hourly_rate": 3.6986, "tpm_capacity": 161400, "needles": ["$2,700"], "throughput_note": "Published $2,700/GSU-month. 2,690 burndown tokens/sec per GSU.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 2.5 Flash", "unit_name": "GSU", "term": "3-month", "hourly_rate": 3.2877, "tpm_capacity": 161400, "needles": ["$2,400"], "throughput_note": "Published $2,400/GSU-month on a 3-month term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 2.5 Flash", "unit_name": "GSU", "term": "1-year", "hourly_rate": 2.7397, "tpm_capacity": 161400, "needles": ["$2,000"], "throughput_note": "Published $2,000/GSU-month on a 1-year term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 3.1 Pro", "unit_name": "GSU", "term": "1-month", "hourly_rate": 3.6986, "tpm_capacity": 39000, "needles": ["$2,700"], "throughput_note": "Same GSU dollar price. Pro-class 650 burndown tokens/sec. Output burns 8x.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models"},
+    {"provider": "GCP Vertex AI", "model": "Gemini 3.1 Pro", "unit_name": "GSU", "term": "1-year", "hourly_rate": 2.7397, "tpm_capacity": 39000, "needles": ["$2,000"], "throughput_note": "1-year GSU. Pro-class 650 burndown tokens/sec. Output burns 8x.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models"}
+  ]
+}
