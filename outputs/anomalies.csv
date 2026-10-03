@@ -1,0 +1,3 @@
+usage_date,provider,model_name,input_tokens,output_tokens,input_per_mtok,output_per_mtok,spend_usd,baseline,mad,robust_z,ratio,is_anomaly
+2026-05-07,Azure OpenAI,GPT-4o,14108788,3869656,2.5,10.0,73.96853,12.084608750000001,1.5377174999999985,27.144585974423155,6.120887447018092,True
+2026-06-01,Azure OpenAI,GPT-4o-mini,25824629,7389929,0.15,0.6,8.30765175,1.816311075,0.326826525,13.396737872752219,4.573914603257044,True

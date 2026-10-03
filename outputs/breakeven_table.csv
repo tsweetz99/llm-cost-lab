@@ -1,0 +1,6 @@
+provider,model,unit,term,hourly_rate,monthly_commit_$,payg_blended_$/MTok,breakeven_MTok,unit_capacity_MTok,breakeven_utilization
+Azure OpenAI,GPT-4o,PTU,hourly,1.0,730.0,4.375,166.857,109.5,1.524
+Azure OpenAI,GPT-4o,PTU,1-month,0.3562,260.03,4.375,59.435,109.5,0.543
+Azure OpenAI,GPT-4o,PTU,1-year,0.3028,221.04,4.375,50.524,109.5,0.461
+AWS Bedrock,Claude Sonnet 5,Model Unit,hourly,44.0,32120.0,6.0,5353.333,350.4,15.278
+AWS Bedrock,Claude Sonnet 5,Model Unit,6-month,22.0,16060.0,6.0,2676.667,350.4,7.639
