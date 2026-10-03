@@ -39,12 +39,31 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 | Module | What it does | Status |
 |---|---|---|
 | **01 · Pricing foundation** | Seeds and loads multi-provider LLM/AI pricing into SQLite (`data/seed_pricing.sql`, `src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
-| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU (committed) vs. pay-as-you-go across commitment terms and visualizes the utilization point where committing pays off | 🚧 In progress |
-| **03 · Cost anomaly detection** | `src/03_anomaly.py` — flags abnormal spend/usage patterns in AI cost data | 🗺️ Planned |
+| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU (committed) vs. pay-as-you-go across commitment terms and visualizes the utilization point where committing pays off | ✅ Complete |
+| **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline | ✅ Complete |
+
+## How the math works
+
+**Break-even (Module 02)**
+
+- Workload mix is 75% input / 25% output tokens.
+- Monthly committed bill for one unit = `hourly_rate × 730`.
+- Break-even tokens = that bill ÷ blended $/token.
+- Unit capacity = `tpm_capacity × 60 × 730`.
+- Break-even utilization = break-even tokens ÷ capacity. If that number is over 100%, one unit hits its TPM ceiling before it can beat PAYG.
+
+**Anomaly detection (Module 03)**
+
+- Daily spend is priced from the on-demand table.
+- Baseline is a trailing 14-day median; scale is the MAD.
+- A day flags if (robust z ≥ 3.5 **and** spend ≥ 1.75× baseline) **or** spend ≥ 2.5× baseline.
+- Two incidents are planted on purpose so the output is inspectable: a GPT-4o agent-loop spike and a GPT-4o-mini eval job left running.
+
+Rates in `data/seed_pricing.sql` are a dated lab snapshot, not a live price feed. Swap the seed when a provider sheet changes.
 
 ## Tech stack
 
-- **Python** (`pandas`) — data loading, modeling, and analysis
+- **Python** (`pandas`, `numpy`) — data loading, modeling, and analysis
 - **SQL / SQLite** — pricing data store and analytical queries
 - **matplotlib** — break-even and cost visualizations
 
@@ -59,14 +78,22 @@ cd llm-cost-lab
 python -m venv .venv && source .venv/bin/activate
 
 # 3. Install dependencies
-pip install pandas matplotlib          # SQLite ships with Python
+pip install -r requirements.txt          # SQLite ships with Python
 
 # 4. Build the pricing database (Module 01)
 python src/01_load_pricing.py
 
-# 5. Run an analysis (example — Module 02)
+# 5. Compare unit economics
+python src/queries.py
+
+# 6. Break-even: PTU vs PAYG (Module 02)
 python src/02_breakeven.py
+
+# 7. Flag spend spikes (Module 03)
+python src/03_anomaly.py
 ```
+
+Charts and tables land in `outputs/`.
 
 ## How this was built
 
