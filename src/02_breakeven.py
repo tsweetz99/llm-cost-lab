@@ -14,6 +14,15 @@ Assumptions (documented so the chart is auditable):
 - Break-even utilization = break-even tokens / monthly real-token capacity.
 - Tiers above 200k context, prompt caching and non-text modalities are ignored.
 
+Peak-to-average (P = peak-minute TPM / average TPM): a commitment must be sized
+for the peak. If a fractional unit count is sized to be 100% busy at peak, its
+average utilization is 1 / P, so
+      commitment cost / PAYG cost = P * breakeven_utilization
+      max_peak_to_avg             = 1 / breakeven_utilization
+A commitment only wins while the workload's P stays below max_peak_to_avg.
+This assumes no spillover to PAYG, whole units are not enforced, and minimum
+deployment sizes are ignored.
+
 Providers set output_burn close to the model's output/input price ratio, so
 break-even utilization is nearly independent of the mix. `burn_matches_price`
 flags rows where that stops being true (usually a data-entry error).
@@ -39,6 +48,8 @@ INPUT_SHARE = 0.75
 OUTPUT_SHARE = 0.25
 MINUTES_PER_MONTH = 60 * HOURS_PER_MONTH
 BURN_PRICE_TOLERANCE = 0.15
+PEAK_SCENARIOS = [1.0, 1.25, 1.5, 2.0, 3.0, 5.0]
+SENSITIVITY_TERMS = ["1-month", "3-month", "1-year"]
 
 
 def load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
@@ -118,6 +129,7 @@ def break_even_table(
                 "breakeven_MTok": round(be_tokens / 1_000_000, 3),
                 "unit_capacity_MTok": round(cap_tokens / 1_000_000, 3),
                 "breakeven_utilization": round(be_tokens / cap_tokens, 3),
+                "max_peak_to_avg": round(cap_tokens / be_tokens, 2),
                 "output_burn": u["output_burn"],
                 "price_ratio": round(price_ratio, 2),
                 "burn_matches_price": abs(burn_ratio - 1) <= BURN_PRICE_TOLERANCE,
@@ -194,6 +206,53 @@ def plot(payg: pd.DataFrame, table: pd.DataFrame) -> Path:
     return out
 
 
+def peak_sensitivity(table: pd.DataFrame) -> pd.DataFrame:
+    """Commitment savings vs PAYG at each peak-to-average scenario.
+
+    savings = 1 - P * breakeven_utilization; negative means the commitment
+    costs more than staying on demand.
+    """
+    out = table[["provider", "model", "unit", "term", "max_peak_to_avg"]].copy()
+    for p in PEAK_SCENARIOS:
+        out[f"P={p:g}"] = (1 - p * table["breakeven_utilization"]).round(3)
+    return out
+
+
+def plot_peak(table: pd.DataFrame) -> Path:
+    fig, ax = plt.subplots(figsize=(10, 6))
+    p = np.linspace(1.0, 2.0, 200)
+    yearly = table[table["term"] == "1-year"]
+    for _, r in yearly.iterrows():
+        savings = (1 - p * r["breakeven_utilization"]) * 100
+        (line,) = ax.plot(p, savings, linewidth=2, label=f"{r['provider']} {r['model']}")
+        if r["max_peak_to_avg"] > 1.0:
+            ax.scatter([r["max_peak_to_avg"]], [0], color=line.get_color(), zorder=5)
+            ax.annotate(
+                f"{r['max_peak_to_avg']:.2f}",
+                xy=(r["max_peak_to_avg"], 0),
+                xytext=(0, -14),
+                textcoords="offset points",
+                ha="center",
+                fontsize=8,
+                color=line.get_color(),
+            )
+
+    ax.axhline(0, color="black", linewidth=1)
+    ax.set_ylim(-60, 30)
+    ax.set_xlim(1.0, 2.0)
+    ax.set_title("1-year commitment savings vs pay-as-you-go, by peak-to-average ratio")
+    ax.set_xlabel("Peak-to-average ratio (peak-minute TPM ÷ average TPM)")
+    ax.set_ylabel("Savings vs pay-as-you-go (%)  ·  below 0 = commitment costs more")
+    ax.grid(True, alpha=0.3)
+    ax.legend(loc="lower left", fontsize=8, framealpha=0.92)
+    fig.tight_layout()
+
+    out = OUTPUTS_DIR / "peak_to_average.png"
+    fig.savefig(out, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+    return out
+
+
 def main() -> None:
     if not DB_PATH.exists():
         raise SystemExit(f"No database at {DB_PATH}. Run: python src/01_load_pricing.py")
@@ -213,6 +272,8 @@ def main() -> None:
     print("  breakeven_utilization  break-even tokens as a % of that capacity")
     print("  If utilization at break-even is > 100%, one unit cannot pay for itself:")
     print("  you would hit the capacity cap before PAYG became more expensive.")
+    print("  max_peak_to_avg        highest peak-to-average ratio at which the commitment still")
+    print("                         beats PAYG (1 / breakeven_utilization; below 1.0 = never)")
     print("  burn_matches_price     output_burn is within "
           f"{BURN_PRICE_TOLERANCE:.0%} of the output/input price ratio")
 
@@ -221,11 +282,23 @@ def main() -> None:
         print("\nCheck these rows: output_burn disagrees with the price ratio")
         print(mismatched[["provider", "model", "output_burn", "price_ratio"]].drop_duplicates().to_string(index=False))
 
+    sensitivity = peak_sensitivity(table)
+    shown = sensitivity[sensitivity["term"].isin(SENSITIVITY_TERMS)].copy()
+    for col in shown.columns[5:]:
+        shown[col] = shown[col].map(lambda v: f"{v:+.0%}")
+    print("\nCommitment savings vs PAYG by peak-to-average ratio (negative = costs more)")
+    print(shown.to_string(index=False))
+
     out = plot(payg, table)
+    peak_out = plot_peak(table)
     csv_out = OUTPUTS_DIR / "breakeven_table.csv"
+    sens_out = OUTPUTS_DIR / "peak_sensitivity.csv"
     table.to_csv(csv_out, index=False)
+    sensitivity.to_csv(sens_out, index=False)
     print(f"\nWrote {out}")
+    print(f"Wrote {peak_out}")
     print(f"Wrote {csv_out}")
+    print(f"Wrote {sens_out}")
 
 
 if __name__ == "__main__":

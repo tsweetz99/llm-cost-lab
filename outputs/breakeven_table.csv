@@ -1,18 +1,18 @@
-provider,model,unit,term,hourly_rate,monthly_commit_$,payg_blended_$/MTok,breakeven_MTok,unit_capacity_MTok,breakeven_utilization,output_burn,price_ratio,burn_matches_price
-Azure OpenAI,GPT-4o,PTU,hourly,1.0,730.0,4.375,166.857,62.571,2.667,4.0,4.0,True
-Azure OpenAI,GPT-4o,PTU,1-month,0.3562,260.03,4.375,59.435,62.571,0.95,4.0,4.0,True
-Azure OpenAI,GPT-4o,PTU,1-year,0.3027,220.97,4.375,50.508,62.571,0.807,4.0,4.0,True
-Azure OpenAI,GPT-4o-mini,PTU,hourly,1.0,730.0,0.2625,2780.952,926.057,3.003,4.0,4.0,True
-Azure OpenAI,GPT-4o-mini,PTU,1-month,0.3562,260.03,0.2625,990.575,926.057,1.07,4.0,4.0,True
-Azure OpenAI,GPT-4o-mini,PTU,1-year,0.3027,220.97,0.2625,841.794,926.057,0.909,4.0,4.0,True
-Azure OpenAI,GPT-5,PTU,hourly,1.0,730.0,3.4375,212.364,75.655,2.807,8.0,8.0,True
-Azure OpenAI,GPT-5,PTU,1-month,0.3562,260.03,3.4375,75.644,75.655,1.0,8.0,8.0,True
-Azure OpenAI,GPT-5,PTU,1-year,0.3027,220.97,3.4375,64.282,75.655,0.85,8.0,8.0,True
-GCP Vertex AI,Gemini 2.5 Flash,GSU,1-week,7.1429,5214.32,0.85,6134.491,2356.44,2.603,9.0,8.33,True
-GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,3.6986,2699.98,0.85,3176.445,2356.44,1.348,9.0,8.33,True
-GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,3.2877,2400.02,0.85,2823.554,2356.44,1.198,9.0,8.33,True
-GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,2.7397,1999.98,0.85,2352.919,2356.44,0.999,9.0,8.33,True
-GCP Vertex AI,Gemini 3.1 Pro,GSU,1-week,7.1429,5214.32,4.5,1158.737,584.0,1.984,6.0,6.0,True
-GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,3.6986,2699.98,4.5,599.995,584.0,1.027,6.0,6.0,True
-GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,3.2877,2400.02,4.5,533.338,584.0,0.913,6.0,6.0,True
-GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,2.7397,1999.98,4.5,444.44,584.0,0.761,6.0,6.0,True
+provider,model,unit,term,hourly_rate,monthly_commit_$,payg_blended_$/MTok,breakeven_MTok,unit_capacity_MTok,breakeven_utilization,max_peak_to_avg,output_burn,price_ratio,burn_matches_price
+Azure OpenAI,GPT-4o,PTU,hourly,1.0,730.0,4.375,166.857,62.571,2.667,0.38,4.0,4.0,True
+Azure OpenAI,GPT-4o,PTU,1-month,0.3562,260.03,4.375,59.435,62.571,0.95,1.05,4.0,4.0,True
+Azure OpenAI,GPT-4o,PTU,1-year,0.3027,220.97,4.375,50.508,62.571,0.807,1.24,4.0,4.0,True
+Azure OpenAI,GPT-4o-mini,PTU,hourly,1.0,730.0,0.2625,2780.952,926.057,3.003,0.33,4.0,4.0,True
+Azure OpenAI,GPT-4o-mini,PTU,1-month,0.3562,260.03,0.2625,990.575,926.057,1.07,0.93,4.0,4.0,True
+Azure OpenAI,GPT-4o-mini,PTU,1-year,0.3027,220.97,0.2625,841.794,926.057,0.909,1.1,4.0,4.0,True
+Azure OpenAI,GPT-5,PTU,hourly,1.0,730.0,3.4375,212.364,75.655,2.807,0.36,8.0,8.0,True
+Azure OpenAI,GPT-5,PTU,1-month,0.3562,260.03,3.4375,75.644,75.655,1.0,1.0,8.0,8.0,True
+Azure OpenAI,GPT-5,PTU,1-year,0.3027,220.97,3.4375,64.282,75.655,0.85,1.18,8.0,8.0,True
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-week,7.1429,5214.32,0.85,6134.491,2356.44,2.603,0.38,9.0,8.33,True
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,3.6986,2699.98,0.85,3176.445,2356.44,1.348,0.74,9.0,8.33,True
+GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,3.2877,2400.02,0.85,2823.554,2356.44,1.198,0.83,9.0,8.33,True
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,2.7397,1999.98,0.85,2352.919,2356.44,0.999,1.0,9.0,8.33,True
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-week,7.1429,5214.32,4.5,1158.737,584.0,1.984,0.5,6.0,6.0,True
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,3.6986,2699.98,4.5,599.995,584.0,1.027,0.97,6.0,6.0,True
+GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,3.2877,2400.02,4.5,533.338,584.0,0.913,1.09,6.0,6.0,True
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,2.7397,1999.98,4.5,444.44,584.0,0.761,1.31,6.0,6.0,True

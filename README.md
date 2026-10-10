@@ -40,7 +40,7 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 |---|---|---|
 | **00 · Price refresh** | `data/price_catalog.json` is the pricing source of truth; `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it and checks that each commitment price is still published on the provider's page | ✅ Complete |
 | **01 · Pricing foundation** | Loads on-demand prices, commitment terms, and per-model unit capacity into SQLite (`src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
-| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and plots the utilization point where committing pays off | ✅ Complete |
+| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
 | **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline | ✅ Complete |
 
 ## How the math works
@@ -53,20 +53,23 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 - **Capacity is published in burndown tokens, not raw tokens.** Providers quote a unit's throughput in input-equivalent tokens per minute, and each output token burns several of them (Azure GPT-4o 4×, Gemini 3.1 Pro 6×, Gemini 2.5 Flash 9×). Real-token capacity for a mix with output share *s* is `burndown_tpm ÷ ((1 − s) + s × output_burn)`, times 60 × 730 for a month.
 - Break-even utilization = break-even tokens ÷ real-token capacity. Over 100% means one unit hits its ceiling before it can beat pay-as-you-go.
 - Burn multipliers track each model's output/input price ratio, so break-even utilization is nearly independent of the mix. The script flags any row where the two diverge by more than 15% (`burn_matches_price`), which usually means a data-entry error.
+- **Peakiness matters because a commitment must be sized for the peak.** With peak-to-average ratio *P* (peak-minute TPM ÷ average TPM), a unit sized to be fully busy at peak averages `1 ÷ P` utilization. So commitment cost ÷ pay-as-you-go cost = `P × break-even utilization`, and the highest *P* a commitment can tolerate is `1 ÷ break-even utilization` (`max_peak_to_avg`).
 
-**Key results** (one unit, 75/25 mix, flat 24×7 load):
+**Key results** (one unit, 75/25 mix):
 
-| Unit · model | 1-month term | 1-year term | One-unit capacity (M tokens/mo) |
-|---|---|---|---|
-| Azure PTU · GPT-4o | 95% | 81% | 62.6 |
-| Azure PTU · GPT-5 | ≈100% | 85% | 75.7 |
-| Azure PTU · GPT-4o-mini | 107% | 91% | 926.1 |
-| GCP GSU · Gemini 2.5 Flash | 135% | ≈100% | 2,356.4 |
-| GCP GSU · Gemini 3.1 Pro | 103% | 76% | 584.0 |
+| Unit · model | Break-even util., 1-month | Break-even util., 1-year | Max peak-to-avg, 1-year | One-unit capacity (M tokens/mo) |
+|---|---|---|---|---|
+| Azure PTU · GPT-4o | 95% | 81% | 1.24 | 62.6 |
+| Azure PTU · GPT-5 | ≈100% | 85% | 1.18 | 75.7 |
+| Azure PTU · GPT-4o-mini | 107% | 91% | 1.10 | 926.1 |
+| GCP GSU · Gemini 2.5 Flash | 135% | ≈100% | 1.00 | 2,356.4 |
+| GCP GSU · Gemini 3.1 Pro | 103% | 76% | 1.31 | 584.0 |
 
-Cells are break-even utilization: the share of the unit's real-token capacity you must sustain before the commitment beats pay-as-you-go. Over 100% means it never pays on a single unit. Shorter terms (hourly, 1-week) are worse in every case; the full table is in `outputs/breakeven_table.csv`.
+Utilization cells are the share of the unit's real-token capacity you must sustain before the commitment beats pay-as-you-go; over 100% means it never pays on a single unit. Shorter terms (hourly, 1-week) are worse in every case. Full tables: `outputs/breakeven_table.csv` and `outputs/peak_sensitivity.csv`.
 
-At these rates, commitments only pay when a workload is steady and close to the unit's ceiling. Bursty traffic is usually cheaper on demand, and a peaky real workload raises the effective break-even above the flat-load figures here.
+![1-year commitment savings vs peak-to-average ratio](outputs/peak_to_average.png)
+
+A 1-year commitment only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average. Past that it costs more: at a peak-to-average ratio of 2, every 1-year term modeled costs 52–100% more than staying on demand. Measure your own ratio before committing; steady, high-volume workloads are the ones that qualify.
 
 **Anomaly detection (Module 03)**
 
@@ -82,7 +85,8 @@ Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is t
 ## Known limitations
 
 - Text tokens on the ≤200k-context tier only. Prompt caching, batch discounts, long-context pricing, and non-text modalities are not modeled.
-- Utilization assumes a flat 24×7 load. There is no peak-to-average adjustment yet.
+- The peak-to-average analysis sizes a (fractional) unit count to the peak with no overflow to pay-as-you-go. A hybrid — commit to the base load and spill the rest — is the natural refinement and is not modeled. Whole-unit rounding and provider minimum deployment sizes are also ignored.
+- The peak-to-average ratio is an input, not measured: the synthetic usage in Module 03 is daily, so it can't show intra-day peaks.
 - Azure and GCP commitments are modeled. AWS Bedrock is covered for pay-as-you-go pricing only; Provisioned Throughput is not yet seeded.
 - Gemini 3.1 Pro is a preview model, so its capacity figures may change.
 - Module 03 runs on synthetic usage data with two planted incidents. It demonstrates the method, not production detection accuracy.
