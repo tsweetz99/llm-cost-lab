@@ -30,9 +30,9 @@ def fetch(url: str) -> tuple[int, str]:
 
 def check_pages(catalog: dict, offline: bool) -> list[dict]:
     results = []
-    urls = sorted({row["source_url"] for row in catalog["committed"]})
+    urls = sorted({row["source_url"] for row in catalog["commitment_terms"]})
     for url in urls:
-        needles = sorted({n for row in catalog["committed"] if row["source_url"] == url for n in row["needles"]})
+        needles = sorted({n for row in catalog["commitment_terms"] if row["source_url"] == url for n in row["needles"]})
         if offline:
             results.append({"url": url, "status": "skipped", "needles": needles, "hit": []})
             continue
@@ -76,13 +76,18 @@ def write_seed(catalog: dict, fetched_on: str) -> None:
             for r in catalog["on_demand"]
         ) + ";",
         "",
-        "INSERT INTO committed_pricing (provider_id, model_id, unit_name, hourly_rate, term, tpm_capacity, throughput_note, effective_date, source_url) VALUES",
+        "INSERT INTO commitment_terms (provider_id, unit_name, term, hourly_rate, note, effective_date, source_url) VALUES",
         ",\n".join(
-            "("
-            f"{provider_id[r['provider']]}, {model_id[(r['provider'], r['model'])]}, {q(r['unit_name'])}, "
-            f"{r['hourly_rate']:.4f}, {q(r['term'])}, {r['tpm_capacity']}, {q(r['throughput_note'])}, {q(fetched_on)}, {q(r['source_url'])}"
-            ")"
-            for r in catalog["committed"]
+            f"({provider_id[r['provider']]}, {q(r['unit_name'])}, {q(r['term'])}, {r['hourly_rate']:.4f}, "
+            f"{q(r.get('note', ''))}, {q(fetched_on)}, {q(r['source_url'])})"
+            for r in catalog["commitment_terms"]
+        ) + ";",
+        "",
+        "INSERT INTO unit_capacity (provider_id, unit_name, model_id, burndown_tpm, output_burn, note, source_url) VALUES",
+        ",\n".join(
+            f"({provider_id[r['provider']]}, {q(r['unit_name'])}, {model_id[(r['provider'], r['model'])]}, "
+            f"{r['burndown_tpm']}, {r['output_burn']}, {q(r.get('note', ''))}, {q(r['source_url'])})"
+            for r in catalog["unit_capacity"]
         ) + ";\n",
     ]
     SEED_PATH.write_text("\n".join(lines), encoding="utf-8")
@@ -93,7 +98,7 @@ def main() -> None:
     parser.add_argument("--offline", action="store_true")
     args = parser.parse_args()
     catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
-    fetched_on = date.today().isoformat()
+    fetched_on = catalog["fetched_on"] if args.offline else date.today().isoformat()
     checks = check_pages(catalog, args.offline)
     SNAPSHOT_PATH.write_text(json.dumps({"fetched_on": fetched_on, "offline": args.offline, "checks": checks}, indent=2), encoding="utf-8")
     write_seed(catalog, fetched_on)
