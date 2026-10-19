@@ -181,3 +181,7 @@ This lab is deliberately built with an **AI-assisted, human-owned** workflow: I 
 I'm a FinOps and cloud cost-optimization practitioner focused on the emerging discipline of **AI cost governance** — bringing the accountability, commitment planning, and anomaly detection that matured on traditional cloud spend to LLM and AI infrastructure.
 
 🔗 [linkedin.com/in/tsweetz](https://www.linkedin.com/in/tsweetz)
+
+## License
+
+MIT. See [LICENSE](LICENSE).

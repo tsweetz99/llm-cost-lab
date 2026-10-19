@@ -1,3 +1,4 @@
+from contextlib import closing
 from pathlib import Path
 import sqlite3
 import sys
@@ -81,7 +82,7 @@ def create_schema(conn: sqlite3.Connection) -> None:
 
 
 def load_seed() -> None:
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         create_schema(conn)
         with open(SEED_PATH, encoding="utf-8") as f:
             conn.executescript(f.read())

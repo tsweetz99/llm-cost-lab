@@ -28,6 +28,9 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")  # fixed backend so saved charts don't depend on the local default
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -123,7 +126,7 @@ def plot(result: pd.DataFrame, suffix: str) -> Path:
     fig.suptitle("Hybrid sizing: how much to commit depends on the load shape")
     fig.tight_layout()
     out = OUTPUTS_DIR / f"hybrid_sizing{suffix}.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    fig.savefig(out, dpi=200, bbox_inches="tight", metadata={"Software": None})
     plt.close(fig)
     return out
 

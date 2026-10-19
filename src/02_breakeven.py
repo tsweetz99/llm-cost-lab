@@ -34,8 +34,12 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from contextlib import closing
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")  # fixed backend so saved charts don't depend on the local default
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -53,7 +57,7 @@ SENSITIVITY_TERMS = ["1-month", "3-month", "1-year"]
 
 
 def load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         payg = pd.read_sql_query(
             """
             SELECT
@@ -201,7 +205,7 @@ def plot(payg: pd.DataFrame, table: pd.DataFrame) -> Path:
     fig.tight_layout()
 
     out = OUTPUTS_DIR / "breakeven_analysis.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    fig.savefig(out, dpi=200, bbox_inches="tight", metadata={"Software": None})
     plt.close(fig)
     return out
 
@@ -248,7 +252,7 @@ def plot_peak(table: pd.DataFrame) -> Path:
     fig.tight_layout()
 
     out = OUTPUTS_DIR / "peak_to_average.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    fig.savefig(out, dpi=200, bbox_inches="tight", metadata={"Software": None})
     plt.close(fig)
     return out
 
