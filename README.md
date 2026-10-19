@@ -38,7 +38,7 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 
 | Module | What it does | Status |
 |---|---|---|
-| **00 · Price refresh** | `data/price_catalog.json` is the pricing source of truth; `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it and checks that each commitment price is still published on the provider's page | ✅ Complete |
+| **00 · Price refresh** | `data/price_catalog.json` is the pricing source of truth; `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it, checks that each commitment price is still published on the provider's page, and (`--check`) verifies the seed hasn't drifted from the catalog | ✅ Complete |
 | **01 · Pricing foundation** | Loads on-demand prices, commitment terms, and per-model unit capacity into SQLite (`src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
 | **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
 | **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline that is weekday/weekend-aware; `src/stress_test_anomaly.py` moves the incident around to test it | ✅ Complete |
@@ -119,7 +119,7 @@ False flags average 0.010 per 90-day × 8-model run with the day-class baseline 
 
 **Where the data comes from**
 
-Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is the source of truth. `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it (never hand-edit the seed) and fails loudly if a commitment price figure disappears from the provider's page. Throughput and burn figures come from provider documentation and are not machine-checked; each row carries its `source_url`.
+Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is the source of truth. `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it (never hand-edit the seed) and fails loudly if a commitment price figure disappears from the provider's page. A drift guard enforces the "never hand-edit" rule: `python src/00_refresh_prices.py --check` (no network, no writes) and the database loader both fail, with a diff, if the committed seed is not exactly what the catalog renders to. Without it, a hand edit to the seed would be silently overwritten by the next refresh. Throughput and burn figures come from provider documentation and are not machine-checked; each row carries its `source_url`.
 
 ## Known limitations
 
@@ -152,6 +152,7 @@ pip install -r requirements.txt          # SQLite ships with Python
 
 # 4. (Optional) regenerate the seed from the price catalog
 python src/00_refresh_prices.py          # add --offline to skip the live page checks
+python src/00_refresh_prices.py --check  # verify the seed still matches the catalog (no network, no writes)
 
 # 5. Build the pricing database (Module 01; rebuilt from scratch on every run)
 python src/01_load_pricing.py

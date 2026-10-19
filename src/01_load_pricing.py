@@ -4,6 +4,7 @@ import sqlite3
 import sys
 
 sys.path.insert(0, str(Path(__file__).parent))
+from catalog import REFRESH_HINT, seed_drift
 from config import DB_PATH, SEED_PATH
 
 
@@ -82,6 +83,15 @@ def create_schema(conn: sqlite3.Connection) -> None:
 
 
 def load_seed() -> None:
+    drift = seed_drift()
+    if drift:
+        raise SystemExit(
+            "data/seed_pricing.sql is out of sync with data/price_catalog.json, "
+            "so the database would not match the catalog.\n"
+            + "\n".join(drift[:40])
+            + f"\n\nIf the catalog is right, run: {REFRESH_HINT}\n"
+            "If you hand-edited the seed, move that change into the catalog first."
+        )
     with closing(sqlite3.connect(DB_PATH)) as conn:
         create_schema(conn)
         with open(SEED_PATH, encoding="utf-8") as f:
