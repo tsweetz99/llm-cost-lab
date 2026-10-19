@@ -43,6 +43,7 @@ matplotlib.use("Agg")  # fixed backend so saved charts don't depend on the local
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+from matplotlib.lines import Line2D
 
 sys.path.insert(0, str(Path(__file__).parent))
 from config import DB_PATH, OUTPUTS_DIR
@@ -146,63 +147,100 @@ def break_even_table(
     )
 
 
-def plot(payg: pd.DataFrame, table: pd.DataFrame) -> Path:
-    tokens = np.linspace(0, 120_000_000, 400)
-    fig, ax = plt.subplots(figsize=(12, 7))
+PROVIDER_SHORT = {"Azure OpenAI": "Azure", "GCP Vertex AI": "GCP", "AWS Bedrock": "AWS"}
+TERM_ORDER = ["hourly", "1-week", "1-month", "3-month", "6-month", "1-year"]
+TERM_COLORS = {
+    "hourly": "#7f7f7f",
+    "1-week": "#bcbd22",
+    "1-month": "#ff7f0e",
+    "3-month": "#2ca02c",
+    "6-month": "#9467bd",
+    "1-year": "#1f77b4",
+}
+PLOT_COLUMNS = 3
 
-    for _, row in payg.iterrows():
-        cost = tokens * row["blended_per_mtok"] / 1_000_000
-        style = "-" if row["model_name"] == "GPT-4o" else "--"
-        width = 2.4 if row["model_name"] == "GPT-4o" else 1.2
-        alpha = 1.0 if row["model_name"] == "GPT-4o" else 0.45
-        ax.plot(
-            tokens / 1_000_000,
-            cost,
-            style,
-            linewidth=width,
-            alpha=alpha,
-            label=f"PAYG {row['provider']} {row['model_name']}",
+
+def plot(table: pd.DataFrame) -> Path:
+    """One panel per commitment unit and model: PAYG line, a fixed-cost line per term, capacity ceiling.
+
+    Each commitment line stops at the unit's real-token capacity, because one unit cannot serve
+    more. A dot marks where the commitment starts to beat pay-as-you-go (labeled with the
+    utilization it needs). Terms that never pay within one unit are listed in the panel.
+    """
+    units = table[["provider", "model", "unit"]].drop_duplicates().reset_index(drop=True)
+    nrows = -(-len(units) // PLOT_COLUMNS)
+    fig, axes = plt.subplots(nrows, PLOT_COLUMNS, figsize=(5.2 * PLOT_COLUMNS, 4.3 * nrows), squeeze=False)
+    seen_terms: set[str] = set()
+
+    for ax, (_, u) in zip(axes.flat, units.iterrows()):
+        rows = table[(table["provider"] == u["provider"]) & (table["model"] == u["model"])]
+        rows = rows.assign(order=rows["term"].map(TERM_ORDER.index)).sort_values("order")
+        capacity = rows["unit_capacity_MTok"].iloc[0]
+        blended = rows["payg_blended_$/MTok"].iloc[0]
+        x_max = capacity * 1.3
+        y_max = blended * x_max
+        ax.plot([0, x_max], [0, y_max], color="black", linewidth=2)
+
+        never_pays = []
+        for _, r in rows.iterrows():
+            term, monthly = r["term"], r["monthly_commit_$"]
+            if r["breakeven_utilization"] > 1:
+                never_pays.append(term)
+            if monthly > y_max:
+                continue
+            seen_terms.add(term)
+            color = TERM_COLORS[term]
+            ax.hlines(monthly, 0, capacity, color=color, linewidth=2)
+            if r["breakeven_utilization"] <= 1:
+                ax.scatter([r["breakeven_MTok"]], [monthly], color=color, edgecolor="black", zorder=5)
+                ax.annotate(
+                    f"{r['breakeven_utilization']:.0%}",
+                    xy=(r["breakeven_MTok"], monthly),
+                    xytext=(6, -13),
+                    textcoords="offset points",
+                    fontsize=8,
+                    bbox={"boxstyle": "round,pad=0.15", "fc": "white", "ec": "none", "alpha": 0.9},
+                    zorder=6,
+                )
+
+        ax.axvline(capacity, color="firebrick", linestyle="--", linewidth=1.2)
+        ax.set_xlim(0, x_max)
+        ax.set_ylim(0, y_max)
+        ax.set_title(
+            f"{PROVIDER_SHORT.get(u['provider'], u['provider'])} {u['unit']} \u00b7 {u['model']}",
+            fontsize=10,
+            pad=14,
         )
-
-    term_styles = {"hourly": ":", "1-month": "--", "1-year": "-.", "6-month": "--"}
-    gpt4o = table[table["model"] == "GPT-4o"]
-    for _, r in gpt4o.iterrows():
-        ax.axhline(
-            r["monthly_commit_$"],
-            linestyle=term_styles.get(r["term"], "--"),
-            linewidth=2,
-            label=f"PTU {r['term']}  ${r['monthly_commit_$']:,.0f}/mo",
+        ax.text(
+            0.02, 0.97, f"1 {u['unit']} ceiling: {capacity:,.0f}M tok/mo",
+            transform=ax.transAxes, va="top", fontsize=7.5, color="firebrick",
         )
+        if never_pays:
+            ax.text(
+                0.5, 1.012, "never pays on one unit: " + ", ".join(never_pays),
+                transform=ax.transAxes, ha="center", va="bottom", fontsize=7.5, color="0.35",
+            )
+        ax.set_xlabel("Monthly tokens (millions)", fontsize=8)
+        ax.grid(True, alpha=0.3)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("Monthly cost (USD)", fontsize=8)
+    for ax in axes.flat[len(units):]:
+        ax.set_visible(False)
 
-    capacity_mtok = gpt4o["unit_capacity_MTok"].iloc[0]
-    ax.axvline(capacity_mtok, color="firebrick", linewidth=1.4, alpha=0.8)
-    ax.text(
-        capacity_mtok,
-        0.86,
-        f"1 PTU ceiling\n{capacity_mtok:.0f}M tok/mo ",
-        transform=ax.get_xaxis_transform(),
-        ha="right",
-        fontsize=8,
-        color="firebrick",
-    )
-
-    for _, r in gpt4o.iterrows():
-        ax.axvline(r["breakeven_MTok"], color="0.6", linewidth=0.8, alpha=0.6)
-        ax.scatter([r["breakeven_MTok"]], [r["monthly_commit_$"]], zorder=5)
-        ax.annotate(
-            f"{r['term']}\n{r['breakeven_MTok']:.1f}M tok\n{r['breakeven_utilization']:.0%} util",
-            xy=(r["breakeven_MTok"], r["monthly_commit_$"]),
-            xytext=(6, 8),
-            textcoords="offset points",
-            fontsize=8,
-        )
-
-    ax.set_title("GPT-4o break-even: Azure PTU commitment vs pay-as-you-go")
-    ax.set_xlabel("Monthly tokens (millions)  ·  75% input / 25% output")
-    ax.set_ylabel("Monthly cost (USD)")
-    ax.grid(True, alpha=0.3)
-    ax.legend(loc="upper left", fontsize=8, framealpha=0.92)
-    fig.tight_layout()
+    handles = [Line2D([0], [0], color="black", linewidth=2, label="Pay-as-you-go")]
+    handles += [
+        Line2D([0], [0], color=TERM_COLORS[t], linewidth=2, label=f"{t} commitment")
+        for t in TERM_ORDER
+        if t in seen_terms
+    ]
+    handles += [
+        Line2D([0], [0], color="firebrick", linestyle="--", linewidth=1.2, label="one-unit capacity"),
+        Line2D([0], [0], marker="o", color="w", markerfacecolor="0.6", markeredgecolor="black",
+               label="break-even (label = utilization needed)"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=8, frameon=False)
+    fig.suptitle("Break-even: one committed unit vs pay-as-you-go  \u00b7  75% input / 25% output", fontsize=12)
+    fig.tight_layout(rect=(0, 0.08, 1, 0.97))
 
     out = OUTPUTS_DIR / "breakeven_analysis.png"
     fig.savefig(out, dpi=200, bbox_inches="tight", metadata={"Software": None})
@@ -293,7 +331,7 @@ def main() -> None:
     print("\nCommitment savings vs PAYG by peak-to-average ratio (negative = costs more)")
     print(shown.to_string(index=False))
 
-    out = plot(payg, table)
+    out = plot(table)
     peak_out = plot_peak(table)
     csv_out = OUTPUTS_DIR / "breakeven_table.csv"
     sens_out = OUTPUTS_DIR / "peak_sensitivity.csv"

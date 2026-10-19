@@ -68,6 +68,10 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 
 Utilization cells are the share of the unit's real-token capacity you must sustain before the commitment beats pay-as-you-go; over 100% means it never pays on a single unit. Shorter terms (hourly, 1-week) are worse in every case. Full tables: `outputs/breakeven_table.csv` and `outputs/peak_sensitivity.csv`.
 
+![Break-even by commitment unit and model](outputs/breakeven_analysis.png)
+
+Each panel is one unit and model in real dollars and tokens. The diagonal is pay-as-you-go; each horizontal line is a term's fixed monthly bill, drawn only up to the one-unit capacity (the dashed red line). The dot is where committing starts to pay, labeled with the utilization it needs. Terms whose break-even sits beyond the ceiling are listed above the panel as never paying on a single unit.
+
 ![1-year commitment savings vs peak-to-average ratio](outputs/peak_to_average.png)
 
 A 1-year commitment sized to the peak only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average. Past that it costs more: at a peak-to-average ratio of 2, every 1-year term modeled costs 52–100% more than staying on demand. Module 04 relaxes the sized-to-peak assumption.
