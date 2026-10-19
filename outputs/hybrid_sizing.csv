@@ -1,0 +1,49 @@
+provider,model,unit,term,shape,shape_peak_to_avg,breakeven_utilization,optimal_commit_x_avg,share_of_tokens_committed,committed_avg_utilization,savings_hybrid,savings_sized_to_peak
+Azure OpenAI,GPT-4o,PTU,1-month,flat,1.0,0.95,1.0,1.0,1.0,0.05,0.05
+Azure OpenAI,GPT-4o,PTU,1-month,business_hours,2.57,0.95,0.257,0.257,1.0,0.0129,-1.4441
+Azure OpenAI,GPT-4o,PTU,1-month,diurnal_24x7,1.64,0.95,0.434,0.433,0.996,0.0202,-0.5586
+Azure OpenAI,GPT-4o,PTU,1-month,nightly_batch,3.6,0.95,0.48,0.48,1.0,0.024,-2.42
+Azure OpenAI,GPT-4o,PTU,1-year,flat,1.0,0.807,1.0,1.0,1.0,0.193,0.193
+Azure OpenAI,GPT-4o,PTU,1-year,business_hours,2.57,0.807,0.257,0.257,1.0,0.0497,-1.0762
+Azure OpenAI,GPT-4o,PTU,1-year,diurnal_24x7,1.64,0.807,0.574,0.561,0.977,0.0977,-0.324
+Azure OpenAI,GPT-4o,PTU,1-year,nightly_batch,3.6,0.807,0.48,0.48,1.0,0.0926,-1.9052
+Azure OpenAI,GPT-4o-mini,PTU,1-month,flat,1.0,1.07,0.0,0.0,,0.0,-0.07
+Azure OpenAI,GPT-4o-mini,PTU,1-month,business_hours,2.57,1.07,0.0,0.0,,0.0,-1.7528
+Azure OpenAI,GPT-4o-mini,PTU,1-month,diurnal_24x7,1.64,1.07,0.0,0.0,,0.0,-0.7555
+Azure OpenAI,GPT-4o-mini,PTU,1-month,nightly_batch,3.6,1.07,0.0,0.0,,0.0,-2.852
+Azure OpenAI,GPT-4o-mini,PTU,1-year,flat,1.0,0.909,1.0,1.0,1.0,0.091,0.091
+Azure OpenAI,GPT-4o-mini,PTU,1-year,business_hours,2.57,0.909,0.257,0.257,1.0,0.0234,-1.3386
+Azure OpenAI,GPT-4o-mini,PTU,1-year,diurnal_24x7,1.64,0.909,0.547,0.537,0.983,0.0403,-0.4913
+Azure OpenAI,GPT-4o-mini,PTU,1-year,nightly_batch,3.6,0.909,0.48,0.48,1.0,0.0437,-2.2724
+Azure OpenAI,GPT-5,PTU,1-month,flat,1.0,1.0,0.0,0.0,,0.0,0.0
+Azure OpenAI,GPT-5,PTU,1-month,business_hours,2.57,1.0,0.0,0.0,,0.0,-1.5727
+Azure OpenAI,GPT-5,PTU,1-month,diurnal_24x7,1.64,1.0,0.383,0.383,1.0,0.0,-0.6406
+Azure OpenAI,GPT-5,PTU,1-month,nightly_batch,3.6,1.0,0.48,0.48,1.0,0.0,-2.6
+Azure OpenAI,GPT-5,PTU,1-year,flat,1.0,0.85,1.0,1.0,1.0,0.15,0.15
+Azure OpenAI,GPT-5,PTU,1-year,business_hours,2.57,0.85,0.257,0.257,1.0,0.0386,-1.1868
+Azure OpenAI,GPT-5,PTU,1-year,diurnal_24x7,1.64,0.85,0.566,0.554,0.98,0.0732,-0.3945
+Azure OpenAI,GPT-5,PTU,1-year,nightly_batch,3.6,0.85,0.48,0.48,1.0,0.072,-2.06
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,flat,1.0,1.348,0.0,0.0,,0.0,-0.348
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,business_hours,2.57,1.348,0.0,0.0,,0.0,-2.4681
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,diurnal_24x7,1.64,1.348,0.0,0.0,,0.0,-1.2116
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-month,nightly_batch,3.6,1.348,0.0,0.0,,0.0,-3.8528
+GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,flat,1.0,1.198,0.0,0.0,,0.0,-0.198
+GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,business_hours,2.57,1.198,0.0,0.0,,0.0,-2.0821
+GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,diurnal_24x7,1.64,1.198,0.0,0.0,,0.0,-0.9655
+GCP Vertex AI,Gemini 2.5 Flash,GSU,3-month,nightly_batch,3.6,1.198,0.0,0.0,,0.0,-3.3128
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,flat,1.0,0.999,1.0,1.0,1.0,0.001,0.001
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,business_hours,2.57,0.999,0.257,0.257,1.0,0.0003,-1.5702
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,diurnal_24x7,1.64,0.999,0.383,0.383,1.0,0.0004,-0.639
+GCP Vertex AI,Gemini 2.5 Flash,GSU,1-year,nightly_batch,3.6,0.999,0.48,0.48,1.0,0.0005,-2.5964
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,flat,1.0,1.027,0.0,0.0,,0.0,-0.027
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,business_hours,2.57,1.027,0.0,0.0,,0.0,-1.6422
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,diurnal_24x7,1.64,1.027,0.0,0.0,,0.0,-0.6849
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-month,nightly_batch,3.6,1.027,0.0,0.0,,0.0,-2.6972
+GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,flat,1.0,0.913,1.0,1.0,1.0,0.087,0.087
+GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,business_hours,2.57,0.913,0.257,0.257,1.0,0.0224,-1.3489
+GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,diurnal_24x7,1.64,0.913,0.547,0.537,0.983,0.0381,-0.4979
+GCP Vertex AI,Gemini 3.1 Pro,GSU,3-month,nightly_batch,3.6,0.913,0.48,0.48,1.0,0.0418,-2.2868
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,flat,1.0,0.761,1.0,1.0,1.0,0.239,0.239
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,business_hours,2.57,0.761,0.257,0.257,1.0,0.0615,-0.9579
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,diurnal_24x7,1.64,0.761,0.62,0.598,0.964,0.1261,-0.2485
+GCP Vertex AI,Gemini 3.1 Pro,GSU,1-year,nightly_batch,3.6,0.761,0.48,0.48,1.0,0.1147,-1.7396

@@ -42,6 +42,7 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 | **01 · Pricing foundation** | Loads on-demand prices, commitment terms, and per-model unit capacity into SQLite (`src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
 | **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
 | **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline | ✅ Complete |
+| **04 · Hybrid sizing** | `src/04_hybrid_sizing.py` — finds how much to commit when overflow can spill to pay-as-you-go, across illustrative weekly load shapes or your own hourly token CSV | ✅ Complete |
 
 ## How the math works
 
@@ -69,7 +70,30 @@ Utilization cells are the share of the unit's real-token capacity you must susta
 
 ![1-year commitment savings vs peak-to-average ratio](outputs/peak_to_average.png)
 
-A 1-year commitment only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average. Past that it costs more: at a peak-to-average ratio of 2, every 1-year term modeled costs 52–100% more than staying on demand. Measure your own ratio before committing; steady, high-volume workloads are the ones that qualify.
+A 1-year commitment sized to the peak only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average. Past that it costs more: at a peak-to-average ratio of 2, every 1-year term modeled costs 52–100% more than staying on demand. Module 04 relaxes the sized-to-peak assumption.
+
+**Hybrid sizing (Module 04)**
+
+Azure (spillover, opt-in) and Vertex AI (default) can serve traffic above a commitment at pay-as-you-go rates, so the question becomes "how much should I commit?" rather than "should I commit?". Normalize by the pay-as-you-go cost of all tokens, let *x(t)* be the hourly load as a multiple of the average, and *u* the break-even utilization:
+
+- Committing *c* × the average load costs `u·c + mean(max(x − c, 0))`.
+- The optimum is the load level exceeded a fraction *u* of the time. If *u* ≥ 1, commit nothing.
+- Savings are never negative, and are capped at `(1 − u)` times the share of tokens the commitment serves, because the discount only applies to committed tokens.
+- Savings depend on the load shape and *u*, not on volume.
+
+1-year hybrid savings vs pay-as-you-go, on illustrative weekly hourly load shapes (*P* = hourly peak-to-average):
+
+| Unit · model | flat (P=1.00) | diurnal 24×7 (P=1.64) | business hours (P=2.57) | nightly batch (P=3.60) |
+|---|---|---|---|---|
+| Azure PTU · GPT-4o | 19.3% | 9.8% | 5.0% | 9.3% |
+| Azure PTU · GPT-5 | 15.0% | 7.3% | 3.9% | 7.2% |
+| Azure PTU · GPT-4o-mini | 9.1% | 4.0% | 2.3% | 4.4% |
+| GCP GSU · Gemini 2.5 Flash | 0.1% | 0.0% | 0.0% | 0.1% |
+| GCP GSU · Gemini 3.1 Pro | 23.9% | 12.6% | 6.2% | 11.5% |
+
+![Sized-to-peak vs hybrid savings by load shape](outputs/hybrid_sizing.png)
+
+Sized to the peak, the same non-flat shapes lose 25–260%; hybrid sizing never loses. But the optimal commitment covers only the base load (0.26–0.62× the average for non-flat shapes), so realistic savings are small: 2–13% for the Azure models and Gemini 3.1 Pro, versus up to 24% for a perfectly flat load. Commitments here are a modest discount on a steady floor, not a lever on total spend. The shapes are illustrative, not measurements: run `python src/04_hybrid_sizing.py --load-csv your_hourly_tokens.csv` (a `tokens` column) to size against your own load. Full results: `outputs/hybrid_sizing.csv`.
 
 **Anomaly detection (Module 03)**
 
@@ -85,8 +109,8 @@ Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is t
 ## Known limitations
 
 - Text tokens on the ≤200k-context tier only. Prompt caching, batch discounts, long-context pricing, and non-text modalities are not modeled.
-- The peak-to-average analysis sizes a (fractional) unit count to the peak with no overflow to pay-as-you-go. A hybrid — commit to the base load and spill the rest — is the natural refinement and is not modeled. Whole-unit rounding and provider minimum deployment sizes are also ignored.
-- The peak-to-average ratio is an input, not measured: the synthetic usage in Module 03 is daily, so it can't show intra-day peaks.
+- Module 02's peak-to-average analysis assumes no overflow; Module 04 assumes overflow is billed at the standard pay-as-you-go rate. Both ignore whole-unit rounding and provider minimum deployments (Azure's global PTU minimum is 15). Vertex AI spills whole requests rather than tokens, and Azure spillover must be configured.
+- The peak-to-average ratio and Module 04's load shapes are inputs, not measurements: the synthetic usage in Module 03 is daily, so it can't show intra-day peaks. Hourly shapes also understate minute-level peaks.
 - Azure and GCP commitments are modeled. AWS Bedrock is covered for pay-as-you-go pricing only; Provisioned Throughput is not yet seeded.
 - Gemini 3.1 Pro is a preview model, so its capacity figures may change.
 - Module 03 runs on synthetic usage data with two planted incidents. It demonstrates the method, not production detection accuracy.
@@ -124,6 +148,9 @@ python src/02_breakeven.py
 
 # 8. Flag spend spikes (Module 03)
 python src/03_anomaly.py
+
+# 9. Hybrid commitment sizing (Module 04); add --load-csv your_hourly_tokens.csv for real load
+python src/04_hybrid_sizing.py
 ```
 
 Charts and tables land in `outputs/`.
