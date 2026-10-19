@@ -41,7 +41,7 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 | **00 · Price refresh** | `data/price_catalog.json` is the pricing source of truth; `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it and checks that each commitment price is still published on the provider's page | ✅ Complete |
 | **01 · Pricing foundation** | Loads on-demand prices, commitment terms, and per-model unit capacity into SQLite (`src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
 | **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
-| **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline | ✅ Complete |
+| **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline that is weekday/weekend-aware; `src/stress_test_anomaly.py` moves the incident around to test it | ✅ Complete |
 | **04 · Hybrid sizing** | `src/04_hybrid_sizing.py` — finds how much to commit when overflow can spill to pay-as-you-go, across illustrative weekly load shapes or your own hourly token CSV | ✅ Complete |
 
 ## How the math works
@@ -98,9 +98,24 @@ Sized to the peak, the same non-flat shapes lose 25–260%; hybrid sizing never 
 **Anomaly detection (Module 03)**
 
 - Daily spend is priced from the on-demand table.
-- Baseline is a trailing 14-day median; scale is the MAD.
+- Baseline is the trailing median of the previous four weeks of same-class days (20 weekdays, or 8 weekend days); scale is the MAD of the same window. The first four weeks are warm-up.
 - A day flags if (robust z ≥ 3.5 **and** spend ≥ 1.75× baseline) **or** spend ≥ 2.5× baseline.
 - Two incidents are planted on purpose so the output is inspectable: a GPT-4o agent-loop spike and a GPT-4o-mini eval job left running.
+
+![Portfolio spend and the GPT-4o baseline, with flagged days](outputs/anomaly_detection.png)
+
+**Why the baseline is day-class aware.** Weekend volume is about 35% of weekday volume. A first version used one trailing 14-day window that mixed the two, which inflates both the baseline and the MAD, so weekend incidents had to be roughly twice as large to flag, and an agent loop or a forgotten eval job is exactly what runs unnoticed over a weekend. `src/stress_test_anomaly.py` moves the GPT-4o incident to other days and magnitudes and re-scores both baselines across 100 random seeds (detect rate, share of seeds where the planted day flags):
+
+| Planted GPT-4o incident | Day-class baseline | Legacy mixed 14-day window |
+|---|---|---|
+| Thursday, 6× | 100% | 100% |
+| Thursday, 1.9× | 78% | 77% |
+| Saturday, 6× | 100% | 91% |
+| Saturday, 3× | 100% | 0% |
+| Sunday, 3× | 100% | 0% |
+| Saturday, 2× | 89% | 0% |
+
+False flags average 0.010 per 90-day × 8-model run with the day-class baseline versus 0.020 with the legacy window. The shipped seed flags exactly the two planted days, but a single seed is not a guarantee: a mild 1.9× weekday spike is caught about three times in four. Full results: `outputs/anomaly_stress_test.csv`.
 
 **Where the data comes from**
 
@@ -113,7 +128,8 @@ Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is t
 - The peak-to-average ratio and Module 04's load shapes are inputs, not measurements: the synthetic usage in Module 03 is daily, so it can't show intra-day peaks. Hourly shapes also understate minute-level peaks.
 - Azure and GCP commitments are modeled. AWS Bedrock is covered for pay-as-you-go pricing only; Provisioned Throughput is not yet seeded.
 - Gemini 3.1 Pro is a preview model, so its capacity figures may change.
-- Module 03 runs on synthetic usage data with two planted incidents. It demonstrates the method, not production detection accuracy.
+- Module 03 runs on synthetic usage data with two planted incidents. It demonstrates the method, and the stress-test rates describe this synthetic noise (12% lognormal), not production detection accuracy.
+- Module 03 models seasonality as weekday vs weekend only. Per-weekday patterns, holidays, and month-end effects are not handled, and the detector is one-sided (spikes, not drops).
 
 ## Tech stack
 
@@ -148,6 +164,7 @@ python src/02_breakeven.py
 
 # 8. Flag spend spikes (Module 03)
 python src/03_anomaly.py
+python src/stress_test_anomaly.py        # optional; ~40 s. Moves the incident around to test the detector
 
 # 9. Hybrid commitment sizing (Module 04); add --load-csv your_hourly_tokens.csv for real load
 python src/04_hybrid_sizing.py

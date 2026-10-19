@@ -1,0 +1,15 @@
+scenario,detector,detect_rate,false_flags_per_run,seeds
+no incident,day-class,,0.01,100
+no incident,mixed,,0.02,100
+Thu 6x,day-class,1.0,0.01,100
+Thu 6x,mixed,1.0,0.02,100
+Thu 1.9x,day-class,0.78,0.01,100
+Thu 1.9x,mixed,0.77,0.02,100
+Sat 6x,day-class,1.0,0.01,100
+Sat 6x,mixed,0.91,0.02,100
+Sat 3x,day-class,1.0,0.01,100
+Sat 3x,mixed,0.0,0.02,100
+Sun 3x,day-class,1.0,0.01,100
+Sun 3x,mixed,0.0,0.02,100
+Sat 2x,day-class,0.89,0.01,100
+Sat 2x,mixed,0.0,0.02,100

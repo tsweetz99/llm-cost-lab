@@ -6,16 +6,23 @@ flags days that break a trailing baseline.
 
 Detector
 --------
-For each model, on each day t:
-  baseline = median of the previous 14 same-weekday-excluded rolling window
-             of daily spend (simple trailing 14-day median)
-  mad      = median absolute deviation of that window
+For each model, on each day t, the baseline uses only earlier days of the same
+class (weekday or weekend), so a Saturday is compared with prior weekend days
+rather than a weekday/weekend mix:
+  baseline = median of the previous 20 weekdays (or previous 8 weekend days),
+             i.e. four weeks of history; t itself is excluded
+  mad      = median absolute deviation of that same window
   robust_z = 0.6745 * (spend_t - baseline) / mad
 
 A day is flagged if (robust_z >= 3.5 AND spend >= 1.75x baseline)
   OR spend >= 2.5x baseline.
-Weekends are allowed to be quiet; the detector is one-sided (spikes only).
-The AND on the z-score gate stops a tight MAD from flagging ordinary noise.
+The detector is one-sided (spikes only). The AND on the z-score gate stops a
+tight MAD from flagging ordinary noise. The first four weeks are warm-up.
+
+Why day classes: weekend volume is ~35% of weekday volume. A single trailing
+window that mixes the two inflates both the baseline and the MAD, so weekend
+incidents had to be roughly twice as large to flag. Seasonality is modeled as
+weekday vs weekend only; per-weekday and holiday effects are not.
 
 Planted incidents (so the lab is inspectable):
   day 36  GPT-4o     6x weekday volume  — runaway agent loop
@@ -25,8 +32,12 @@ from __future__ import annotations
 
 import sqlite3
 import sys
+from contextlib import closing
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")  # fixed backend so saved charts don't depend on the local default
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -35,7 +46,9 @@ sys.path.insert(0, str(Path(__file__).parent))
 from config import DB_PATH, OUTPUTS_DIR
 
 RNG = np.random.default_rng(20260710)
-WINDOW = 14
+WEEKDAY_WINDOW = 20
+WEEKEND_WINDOW = 8
+LEGACY_WINDOW = 14
 Z_THRESH = 3.5
 RATIO_FLOOR = 1.75
 RATIO_THRESH = 2.5
@@ -43,39 +56,50 @@ START = pd.Timestamp("2026-04-01")
 DAYS = 90
 
 
+WEEKDAY_INPUT = {
+    "GPT-4o": 2_400_000,
+    "GPT-5": 800_000,
+    "GPT-4o-mini": 6_000_000,
+    "Claude Sonnet 5": 1_200_000,
+    "Claude Sonnet 4.6": 900_000,
+    "Claude Haiku 4.5": 3_000_000,
+    "Gemini 3.1 Pro": 1_000_000,
+    "Gemini 2.5 Flash": 4_500_000,
+}
+PLANTED_INCIDENTS = {
+    (36, "GPT-4o"): 6.0,
+    (61, "GPT-4o-mini"): 4.0,
+}
+
+
+def generate_usage(
+    models: pd.DataFrame,
+    rng: np.random.Generator,
+    planted: dict[tuple[int, str], float],
+) -> list[tuple[int, str, int, int]]:
+    """(model_id, date, input_tokens, output_tokens) rows; `planted` maps (day_index, model) to a multiplier."""
+    rows = []
+    for _, m in models.iterrows():
+        base = WEEKDAY_INPUT.get(m["model_name"], 1_000_000)
+        for i in range(DAYS):
+            day = START + pd.Timedelta(days=i)
+            dow = day.dayofweek
+            seasonal = 0.35 if dow >= 5 else 1.0
+            noise = rng.lognormal(mean=0.0, sigma=0.12)
+            trend = 1.0 + 0.0015 * i
+            spike = planted.get((i, m["model_name"]), 1.0)
+            inp = int(base * seasonal * noise * trend * spike)
+            out = int(inp * 0.25 * rng.uniform(0.85, 1.15))
+            rows.append((int(m["model_id"]), day.strftime("%Y-%m-%d"), inp, out))
+    return rows
+
+
 def seed_usage(conn: sqlite3.Connection) -> None:
     models = pd.read_sql_query(
         "SELECT model_id, model_name FROM models",
         conn,
     )
-    weekday_input = {
-        "GPT-4o": 2_400_000,
-        "GPT-5": 800_000,
-        "GPT-4o-mini": 6_000_000,
-        "Claude Sonnet 5": 1_200_000,
-        "Claude Sonnet 4.6": 900_000,
-        "Claude Haiku 4.5": 3_000_000,
-        "Gemini 3.1 Pro": 1_000_000,
-        "Gemini 2.5 Flash": 4_500_000,
-    }
-    planted = {
-        (36, "GPT-4o"): 6.0,
-        (61, "GPT-4o-mini"): 4.0,
-    }
-
-    rows = []
-    for _, m in models.iterrows():
-        base = weekday_input.get(m["model_name"], 1_000_000)
-        for i in range(DAYS):
-            day = START + pd.Timedelta(days=i)
-            dow = day.dayofweek
-            seasonal = 0.35 if dow >= 5 else 1.0
-            noise = RNG.lognormal(mean=0.0, sigma=0.12)
-            trend = 1.0 + 0.0015 * i
-            spike = planted.get((i, m["model_name"]), 1.0)
-            inp = int(base * seasonal * noise * trend * spike)
-            out = int(inp * 0.25 * RNG.uniform(0.85, 1.15))
-            rows.append((int(m["model_id"]), day.strftime("%Y-%m-%d"), inp, out))
+    rows = generate_usage(models, RNG, PLANTED_INCIDENTS)
 
     conn.execute("DELETE FROM daily_usage")
     conn.executemany(
@@ -113,17 +137,37 @@ def load_spend(conn: sqlite3.Connection) -> pd.DataFrame:
     return df
 
 
-def detect(df: pd.DataFrame) -> pd.DataFrame:
+def _mad(values: np.ndarray) -> float:
+    return np.median(np.abs(values - np.median(values)))
+
+
+def seasonal_baseline(g: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Trailing median and MAD over earlier days of the same class (weekday/weekend)."""
+    baseline = pd.Series(np.nan, index=g.index)
+    mad = baseline.copy()
+    is_weekend = g["usage_date"].dt.dayofweek >= 5
+    for weekend, window in ((False, WEEKDAY_WINDOW), (True, WEEKEND_WINDOW)):
+        spend = g.loc[is_weekend == weekend, "spend_usd"]
+        rolling = spend.rolling(window, min_periods=window)
+        baseline[spend.index] = rolling.median().shift(1)
+        mad[spend.index] = rolling.apply(_mad, raw=True).shift(1)
+    return baseline, mad
+
+
+def mixed_baseline(g: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+    """Legacy seasonality-naive baseline: one trailing window mixing weekdays and weekends.
+
+    Kept only so stress_test_anomaly.py can show what the day-class baseline fixes.
+    """
+    rolling = g["spend_usd"].rolling(LEGACY_WINDOW, min_periods=LEGACY_WINDOW)
+    return rolling.median().shift(1), rolling.apply(_mad, raw=True).shift(1)
+
+
+def detect(df: pd.DataFrame, seasonal: bool = True) -> pd.DataFrame:
     frames = []
     for model, g in df.groupby("model_name", sort=False):
         g = g.sort_values("usage_date").copy()
-        med = g["spend_usd"].rolling(WINDOW, min_periods=WINDOW).median().shift(1)
-        mad = (
-            g["spend_usd"]
-            .rolling(WINDOW, min_periods=WINDOW)
-            .apply(lambda s: np.median(np.abs(s - np.median(s))), raw=True)
-            .shift(1)
-        )
+        med, mad = seasonal_baseline(g) if seasonal else mixed_baseline(g)
         g["baseline"] = med
         g["mad"] = mad.replace(0, np.nan)
         g["robust_z"] = 0.6745 * (g["spend_usd"] - g["baseline"]) / g["mad"]
@@ -162,7 +206,7 @@ def plot(df: pd.DataFrame) -> Path:
 
     gpt = df[df["model_name"] == "GPT-4o"].sort_values("usage_date")
     axes[1].plot(gpt["usage_date"], gpt["spend_usd"], color="#1B2A4A", linewidth=1.6, label="GPT-4o")
-    axes[1].plot(gpt["usage_date"], gpt["baseline"], color="#C9A84C", linewidth=1.2, label="14-day median")
+    axes[1].plot(gpt["usage_date"], gpt["baseline"], color="#C9A84C", linewidth=1.2, label="same-day-class median")
     anom = gpt[gpt["is_anomaly"]]
     axes[1].scatter(anom["usage_date"], anom["spend_usd"], color="#C0392B", zorder=5)
     axes[1].set_title("GPT-4o \u2014 trailing baseline vs actual")
@@ -172,7 +216,7 @@ def plot(df: pd.DataFrame) -> Path:
 
     fig.tight_layout()
     out = OUTPUTS_DIR / "anomaly_detection.png"
-    fig.savefig(out, dpi=200, bbox_inches="tight")
+    fig.savefig(out, dpi=200, bbox_inches="tight", metadata={"Software": None})
     plt.close(fig)
     return out
 
@@ -181,7 +225,7 @@ def main() -> None:
     if not DB_PATH.exists():
         raise SystemExit(f"No database at {DB_PATH}. Run: python src/01_load_pricing.py")
 
-    with sqlite3.connect(DB_PATH) as conn:
+    with closing(sqlite3.connect(DB_PATH)) as conn:
         seed_usage(conn)
         spend = load_spend(conn)
 
