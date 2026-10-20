@@ -1,5 +1,5 @@
 {
-  "fetched_on": "2026-10-03",
+  "fetched_on": "2026-10-19",
   "notes": "Catalog is the refresh source of truth. src/00_refresh_prices.py re-fetches the commitment-term source pages and fails if a published price needle disappears. unit_capacity rows are documentation-sourced (not needle-checked): burndown_tpm is in input-equivalent tokens per minute, output_burn is how many input tokens one output token consumes.",
   "on_demand": [
     {"provider": "Azure OpenAI", "model": "GPT-4o", "tier": "mid", "input_per_mtok": 2.5, "output_per_mtok": 10.0, "source_url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "confidence": "snapshot"},
@@ -15,10 +15,10 @@
     {"provider": "Azure OpenAI", "unit_name": "PTU", "term": "hourly", "hourly_rate": 1.0, "needles": ["$1.00 per hour"], "note": "Global PTU hourly, per PTU.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
     {"provider": "Azure OpenAI", "unit_name": "PTU", "term": "1-month", "hourly_rate": 0.3562, "needles": ["$260 per month"], "note": "$260/PTU-month / 730h.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
     {"provider": "Azure OpenAI", "unit_name": "PTU", "term": "1-year", "hourly_rate": 0.3027, "needles": ["$221 per month"], "note": "$221/PTU-month / 730h.", "source_url": "https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/"},
-    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-week", "hourly_rate": 7.1429, "needles": ["$1,200"], "note": "$1,200/GSU-week.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
-    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-month", "hourly_rate": 3.6986, "needles": ["$2,700"], "note": "$2,700/GSU-month.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
-    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "3-month", "hourly_rate": 3.2877, "needles": ["$2,400"], "note": "$2,400/GSU-month, 3-month term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
-    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-year", "hourly_rate": 2.7397, "needles": ["$2,000"], "note": "$2,000/GSU-month, 1-year term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"}
+    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-week", "hourly_rate": 7.1429, "needles": ["$1,200"], "note": "Global price: $1,200/GSU-week.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-month", "hourly_rate": 3.6986, "needles": ["$2,700"], "note": "Global price: $2,700/GSU-month.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "3-month", "hourly_rate": 3.2877, "needles": ["$2,400"], "note": "Global price: $2,400/GSU-month, 3-month term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"},
+    {"provider": "GCP Vertex AI", "unit_name": "GSU", "term": "1-year", "hourly_rate": 2.7397, "needles": ["$2,000"], "note": "Global price: $2,000/GSU-month, 1-year term.", "source_url": "https://cloud.google.com/vertex-ai/generative-ai/pricing"}
   ],
   "unit_capacity": [
     {"provider": "Azure OpenAI", "unit_name": "PTU", "model": "GPT-4o", "burndown_tpm": 2500, "output_burn": 4, "note": "Input TPM per PTU 2,500; 1 output token = 4 input tokens.", "source_url": "https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/provisioned-throughput-sizing"},
