@@ -24,6 +24,21 @@ def load_catalog() -> dict:
     return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 
+def set_fetched_on(fetched_on: str) -> bool:
+    """Set the catalog's top-level fetched_on in place, preserving its hand-formatted layout.
+
+    Returns True if the file changed.
+    """
+    text = CATALOG_PATH.read_text(encoding="utf-8")
+    updated, count = re.subn(r'("fetched_on":\s*")\d{4}-\d{2}-\d{2}(")', rf"\g<1>{fetched_on}\g<2>", text, count=1)
+    if count != 1:
+        raise SystemExit(f"Could not find a fetched_on date in {CATALOG_PATH.name} to update.")
+    if updated == text:
+        return False
+    CATALOG_PATH.write_text(updated, encoding="utf-8")
+    return True
+
+
 def q(value: str) -> str:
     return "'" + value.replace("'", "''") + "'"
 

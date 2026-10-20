@@ -7,7 +7,8 @@ network calls and writes nothing: it exits non-zero if the committed seed is not
 exactly what the catalog renders to (for example after a hand edit to the seed).
 
 The seed is only rewritten, and its date only restamped, when every live check
-passes. A page that cannot be fetched (network or TLS problem) and a price that
+passes. A successful live run also sets the catalog's fetched_on to that date, so
+a later --offline run reproduces the same seed instead of reverting its dates. A page that cannot be fetched (network or TLS problem) and a price that
 is missing from a page are reported as different failures, and neither one
 touches the seed.
 """
@@ -22,8 +23,8 @@ from datetime import date
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
-from catalog import REFRESH_HINT, load_catalog, render_seed, seed_drift
-from config import DATA_DIR, SEED_PATH
+from catalog import REFRESH_HINT, load_catalog, render_seed, seed_drift, set_fetched_on
+from config import CATALOG_PATH, DATA_DIR, SEED_PATH
 
 SNAPSHOT_PATH = DATA_DIR / "price_snapshot.json"
 # The Vertex AI pricing page is ~3.6 MB of HTML with its prices ~2.2 MB in, so a small cap
@@ -125,6 +126,8 @@ def main() -> None:
     if problems:
         raise SystemExit("\n".join(problems) + f"\n{SEED_PATH.name} was NOT rewritten.")
 
+    if not args.offline and set_fetched_on(fetched_on):
+        print(f"Set fetched_on to {fetched_on} in {CATALOG_PATH.name}")
     SEED_PATH.write_text(render_seed(catalog, fetched_on), encoding="utf-8")
     print(f"Wrote {SEED_PATH}")
 
