@@ -1,4 +1,8 @@
 provider,model,unit,term,hourly_rate,monthly_commit_$,payg_blended_$/MTok,breakeven_MTok,unit_capacity_MTok,breakeven_utilization,max_peak_to_avg,output_burn,price_ratio,burn_matches_price
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,1-month,0.06,43.8,2.0,21.9,21.9,1.0,1.0,5.0,5.0,True
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,3-month,0.054,39.42,2.0,19.71,21.9,0.9,1.11,5.0,5.0,True
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,1-month,0.18,131.4,6.0,21.9,21.9,1.0,1.0,5.0,5.0,True
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,3-month,0.162,118.26,6.0,19.71,21.9,0.9,1.11,5.0,5.0,True
 Azure OpenAI,GPT-4o,PTU,hourly,1.0,730.0,4.375,166.857,62.571,2.667,0.38,4.0,4.0,True
 Azure OpenAI,GPT-4o,PTU,1-month,0.3562,260.03,4.375,59.435,62.571,0.95,1.05,4.0,4.0,True
 Azure OpenAI,GPT-4o,PTU,1-year,0.3027,220.97,4.375,50.508,62.571,0.807,1.24,4.0,4.0,True

@@ -97,7 +97,7 @@ def hybrid_table(table: pd.DataFrame, shapes: dict[str, np.ndarray]) -> pd.DataF
 
 
 def plot(result: pd.DataFrame, suffix: str) -> Path:
-    yearly = result[result["term"] == "1-year"]
+    yearly = breakeven.longest_term(result)
     shapes = list(dict.fromkeys(yearly["shape"]))
     models = list(dict.fromkeys(yearly["model"]))
     width = 0.8 / len(models)
@@ -121,7 +121,7 @@ def plot(result: pd.DataFrame, suffix: str) -> Path:
         ax.set_title(title, fontsize=10)
         ax.set_ylim(-100, 30)
         ax.grid(True, axis="y", alpha=0.3)
-    axes[0].set_ylabel("1-year commitment savings vs pay-as-you-go (%)")
+    axes[0].set_ylabel("Longest-term commitment savings vs pay-as-you-go (%)")
     axes[1].legend(loc="lower right", fontsize=8, framealpha=0.92)
     fig.suptitle("Hybrid sizing: how much to commit depends on the load shape")
     fig.tight_layout()
@@ -150,14 +150,14 @@ def main() -> None:
     for name, x in shapes.items():
         print(f"  {name:15s} peak-to-avg {x.max():.2f}")
 
-    yearly = result[result["term"] == "1-year"]
-    print("\n1-year term: savings vs PAYG, hybrid (sized-to-peak in brackets)")
+    yearly = breakeven.longest_term(result)
+    print("\nLongest term (1-year, or 3-month for Bedrock): savings vs PAYG, hybrid (sized-to-peak in brackets)")
     cells = yearly.assign(
         cell=lambda d: d.apply(lambda r: f"{r['savings_hybrid']:+.1%} ({r['savings_sized_to_peak']:+.0%})", axis=1)
     )
     print(cells.pivot(index="model", columns="shape", values="cell")[list(shapes)].to_string())
 
-    print("\n1-year term: optimal commitment as a multiple of average load")
+    print("\nLongest term: optimal commitment as a multiple of average load")
     print(yearly.pivot(index="model", columns="shape", values="optimal_commit_x_avg")[list(shapes)].to_string())
 
     csv_out = OUTPUTS_DIR / f"hybrid_sizing{suffix}.csv"

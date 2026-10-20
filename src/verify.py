@@ -135,42 +135,92 @@ def _close(a, b) -> bool:
     return a is not None and abs(a - b) < 1e-9
 
 
-def verify_on_demand(catalog: dict, fetch: Fetch) -> list[dict]:
+class _AwsSource:
+    """Fetch the AWS pricing page and its price-list file once; a failure is remembered, not retried."""
+
+    def __init__(self, fetch: Fetch):
+        self.fetch, self.tables, self.error = fetch, None, None
+
+    def get(self) -> list[dict]:
+        if self.error is not None:
+            raise self.error
+        if self.tables is None:
+            try:
+                _, page, _ = self.fetch(AWS_PAGE_URL)
+                _, data, _ = self.fetch(AWS_DATA_URL, referer=AWS_PAGE_URL)
+                self.tables = aws_tables(page, json.loads(data))
+            except (OSError, KeyError, ValueError) as exc:
+                self.error = exc
+                raise
+        return self.tables
+
+
+def _finish(result: dict, check) -> dict:
+    """Run `check()` (returns ok, truncated); turn fetch and parse failures into an 'error' entry."""
+    try:
+        result["ok"], truncated = check()
+        if truncated and not result["ok"]:
+            result["truncated"] = True
+    except OSError as exc:
+        result["error"] = str(exc)
+    except (KeyError, ValueError) as exc:
+        result["error"] = f"could not parse source: {exc!r}"
+    return result
+
+
+def verify_on_demand(catalog: dict, fetch: Fetch, aws: _AwsSource | None = None) -> list[dict]:
     """Verify every on-demand row that has a `verify` spec. One dict per row, never raises."""
-    results, texts, aws = [], {}, {}
+    aws = aws or _AwsSource(fetch)
+    texts: dict[str, tuple[str, bool]] = {}
+    results = []
     for row in catalog["on_demand"]:
         spec = row.get("verify")
         if spec is None:
             continue
-        label = f"{row['provider']} {row['model']}"
-        result = {"row": label, "kind": spec["kind"], "url": spec["url"],
-                  "expected": [row["input_per_mtok"], row["output_per_mtok"]], "ok": False}
-        try:
+        price_in, price_out = row["input_per_mtok"], row["output_per_mtok"]
+        result = {"row": f"{row['provider']} {row['model']}", "kind": spec["kind"], "url": spec["url"],
+                  "expected": [price_in, price_out], "ok": False}
+
+        def check(spec=spec, price_in=price_in, price_out=price_out, result=result):
             if spec["kind"] == "aws_bedrock":
-                if "tables" not in aws:
-                    _, page, _ = fetch(AWS_PAGE_URL)
-                    _, data, _ = fetch(AWS_DATA_URL, referer=AWS_PAGE_URL)
-                    aws["tables"] = aws_tables(page, json.loads(data))
-                found = aws_lookup(
-                    aws["tables"], spec["section"], spec["model"],
-                    ["Price per 1M input tokens", "Price per 1M output tokens"],
-                )
+                found = aws_lookup(aws.get(), spec["section"], spec["model"],
+                                   ["Price per 1M input tokens", "Price per 1M output tokens"])
                 result["found"] = found
-                result["ok"] = found is not None and _close(found[0], row["input_per_mtok"]) and _close(
-                    found[1], row["output_per_mtok"]
-                )
-            else:
-                if spec["url"] not in texts:
-                    status, body, truncated = fetch(spec["url"])
-                    texts[spec["url"]] = (page_text(body), truncated)
-                text, truncated = texts[spec["url"]]
-                check = verify_azure_row if spec["kind"] == "azure_row" else verify_gcp_rows
-                result["ok"] = check(text, spec, row["input_per_mtok"], row["output_per_mtok"])
-                if truncated and not result["ok"]:
-                    result["truncated"] = True
-        except OSError as exc:
-            result["error"] = str(exc)
-        except (KeyError, ValueError) as exc:
-            result["error"] = f"could not parse source: {exc!r}"
-        results.append(result)
+                return found is not None and _close(found[0], price_in) and _close(found[1], price_out), False
+            if spec["url"] not in texts:
+                _, body, truncated = fetch(spec["url"])
+                texts[spec["url"]] = (page_text(body), truncated)
+            text, truncated = texts[spec["url"]]
+            matcher = verify_azure_row if spec["kind"] == "azure_row" else verify_gcp_rows
+            return matcher(text, spec, price_in, price_out), truncated
+
+        results.append(_finish(result, check))
     return results
+
+
+def verify_reserved(catalog: dict, fetch: Fetch, aws: _AwsSource | None = None) -> list[dict]:
+    """Verify AWS Reserved-tier term rows: hourly price per 1K input TPM and per 1K output TPM."""
+    aws = aws or _AwsSource(fetch)
+    results = []
+    for row in catalog["commitment_terms"]:
+        spec = row.get("verify")
+        if spec is None:
+            continue
+        expected = [row["hourly_rate"], row["output_hourly_rate"]]
+        result = {"row": f"{row['provider']} {row['model']} {row['term']}", "kind": spec["kind"],
+                  "url": spec["url"], "expected": expected, "ok": False}
+
+        def check(spec=spec, expected=expected, result=result):
+            columns = [f"Price per hour per 1K {side} TPM with {spec['months']}-Month Commitment" for side in ("Input", "Output")]
+            found = aws_lookup(aws.get(), spec["section"], spec["model"], columns)
+            result["found"] = found
+            return found is not None and _close(found[0], expected[0]) and _close(found[1], expected[1]), False
+
+        results.append(_finish(result, check))
+    return results
+
+
+def verify_catalog(catalog: dict, fetch: Fetch) -> list[dict]:
+    """Every check the catalog asks for, sharing one AWS fetch."""
+    aws = _AwsSource(fetch)
+    return verify_on_demand(catalog, fetch, aws) + verify_reserved(catalog, fetch, aws)

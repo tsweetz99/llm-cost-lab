@@ -26,18 +26,24 @@ INSERT INTO on_demand_pricing (model_id, input_per_mtok, output_per_mtok, effect
 (7, 2.00, 12.00, '2026-10-19', NULL, 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
 (8, 0.30, 2.50, '2026-10-19', NULL, 'https://cloud.google.com/vertex-ai/generative-ai/pricing');
 
-INSERT INTO commitment_terms (provider_id, unit_name, term, hourly_rate, note, effective_date, source_url) VALUES
-(1, 'PTU', 'hourly', 1.0000, 'Global PTU hourly, per PTU.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
-(1, 'PTU', '1-month', 0.3562, '$260/PTU-month / 730h.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
-(1, 'PTU', '1-year', 0.3027, '$221/PTU-month / 730h.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
-(3, 'GSU', '1-week', 7.1429, 'Global price: $1,200/GSU-week.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
-(3, 'GSU', '1-month', 3.6986, 'Global price: $2,700/GSU-month.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
-(3, 'GSU', '3-month', 3.2877, 'Global price: $2,400/GSU-month, 3-month term.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
-(3, 'GSU', '1-year', 2.7397, 'Global price: $2,000/GSU-month, 1-year term.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing');
+INSERT INTO commitment_terms (provider_id, model_id, unit_name, term, hourly_rate, note, effective_date, source_url) VALUES
+(1, NULL, 'PTU', 'hourly', 1.0000, 'Global PTU hourly, per PTU.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
+(1, NULL, 'PTU', '1-month', 0.3562, '$260/PTU-month / 730h.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
+(1, NULL, 'PTU', '1-year', 0.3027, '$221/PTU-month / 730h.', '2026-10-19', 'https://azure.microsoft.com/en-us/blog/accelerate-scale-with-azure-openai-service-provisioned-offering/'),
+(3, NULL, 'GSU', '1-week', 7.1429, 'Global price: $1,200/GSU-week.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
+(3, NULL, 'GSU', '1-month', 3.6986, 'Global price: $2,700/GSU-month.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
+(3, NULL, 'GSU', '3-month', 3.2877, 'Global price: $2,400/GSU-month, 3-month term.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
+(3, NULL, 'GSU', '1-year', 2.7397, 'Global price: $2,000/GSU-month, 1-year term.', '2026-10-19', 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
+(2, 6, 'Reserved 1K TPM', '1-month', 0.0600, 'Global cross-region, US East. $/hour per 1K input TPM; 1K output TPM is reserved separately at $0.3/hour (5x).', '2026-10-19', 'https://aws.amazon.com/bedrock/pricing/'),
+(2, 6, 'Reserved 1K TPM', '3-month', 0.0540, 'Global cross-region, US East. $/hour per 1K input TPM; 1K output TPM is reserved separately at $0.27/hour (5x).', '2026-10-19', 'https://aws.amazon.com/bedrock/pricing/'),
+(2, 5, 'Reserved 1K TPM', '1-month', 0.1800, 'Global cross-region, US East. $/hour per 1K input TPM; 1K output TPM is reserved separately at $0.9/hour (5x).', '2026-10-19', 'https://aws.amazon.com/bedrock/pricing/'),
+(2, 5, 'Reserved 1K TPM', '3-month', 0.1620, 'Global cross-region, US East. $/hour per 1K input TPM; 1K output TPM is reserved separately at $0.81/hour (5x).', '2026-10-19', 'https://aws.amazon.com/bedrock/pricing/');
 
 INSERT INTO unit_capacity (provider_id, unit_name, model_id, burndown_tpm, output_burn, note, source_url) VALUES
 (1, 'PTU', 1, 2500, 4, 'Input TPM per PTU 2,500; 1 output token = 4 input tokens.', 'https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/provisioned-throughput-sizing'),
 (1, 'PTU', 2, 4750, 8, 'Input TPM per PTU 4,750; 1 output token = 8 input tokens.', 'https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/provisioned-throughput-sizing'),
 (1, 'PTU', 3, 37000, 4, 'Input TPM per PTU 37,000; 1 output token = 4 input tokens.', 'https://learn.microsoft.com/en-us/azure/foundry/openai/how-to/provisioned-throughput-sizing'),
 (3, 'GSU', 8, 161400, 9, '2,690 burndown tokens/sec x 60. Output burns 9x. <=200k context tier.', 'https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models'),
-(3, 'GSU', 7, 30000, 6, '500 burndown tokens/sec x 60. Output burns 6x. Preview model; <=200k context tier.', 'https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models');
+(3, 'GSU', 7, 30000, 6, '500 burndown tokens/sec x 60. Output burns 6x. Preview model; <=200k context tier.', 'https://docs.cloud.google.com/vertex-ai/generative-ai/docs/provisioned-throughput/supported-models'),
+(2, 'Reserved 1K TPM', 6, 1000, 5, 'One unit = 1K input TPM at the input price. Output TPM is reserved separately at 5x the price per TPM, equal to the on-demand price ratio, so an output token costs the same as 5 input tokens. Assumes input and output are reserved in proportion to the workload. Minimums of 100K input and 10K output TPM are not enforced.', 'https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html'),
+(2, 'Reserved 1K TPM', 5, 1000, 5, 'One unit = 1K input TPM at the input price. Output TPM is reserved separately at 5x the price per TPM, equal to the on-demand price ratio, so an output token costs the same as 5 input tokens. Assumes input and output are reserved in proportion to the workload. Minimums of 100K input and 10K output TPM are not enforced.', 'https://docs.aws.amazon.com/bedrock/latest/userguide/service-tiers-inference.html');

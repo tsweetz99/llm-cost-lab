@@ -78,6 +78,7 @@ def load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
             SELECT
                 p.name AS provider,
                 t.provider_id,
+                t.model_id AS term_model_id,
                 t.unit_name,
                 t.term,
                 t.hourly_rate
@@ -107,9 +108,11 @@ def load_frames() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 def break_even_table(
     payg: pd.DataFrame, terms: pd.DataFrame, capacity: pd.DataFrame
 ) -> pd.DataFrame:
-    units = capacity.merge(terms, on=["provider_id", "unit_name"]).merge(
-        payg, on=["model_id", "provider"]
-    )
+    units = capacity.merge(terms, on=["provider_id", "unit_name"])
+    # A term with no model applies to every model on that unit (Azure PTU, GCP GSU); a term with a
+    # model (Bedrock Reserved tier) applies only to that model's capacity row.
+    units = units[units["term_model_id"].isna() | (units["term_model_id"] == units["model_id"])]
+    units = units.merge(payg, on=["model_id", "provider"])
     rows = []
     for _, u in units.iterrows():
         monthly_commit = u["hourly_rate"] * HOURS_PER_MONTH
@@ -158,6 +161,13 @@ TERM_COLORS = {
     "1-year": "#1f77b4",
 }
 PLOT_COLUMNS = 3
+
+
+def longest_term(table: pd.DataFrame) -> pd.DataFrame:
+    """Each unit and model's rows at its longest available term (1-year, or 3-month for Bedrock Reserved)."""
+    rank = table["term"].map(TERM_ORDER.index)
+    longest = rank.groupby([table["provider"], table["model"], table["unit"]]).transform("max")
+    return table[rank == longest]
 
 
 def plot(table: pd.DataFrame) -> Path:
@@ -212,7 +222,7 @@ def plot(table: pd.DataFrame) -> Path:
             pad=14,
         )
         ax.text(
-            0.02, 0.97, f"1 {u['unit']} ceiling: {capacity:,.0f}M tok/mo",
+            0.02, 0.97, f"one-unit capacity: {capacity:,.0f}M tok/mo",
             transform=ax.transAxes, va="top", fontsize=7.5, color="firebrick",
         )
         if never_pays:
@@ -263,16 +273,27 @@ def peak_sensitivity(table: pd.DataFrame) -> pd.DataFrame:
 def plot_peak(table: pd.DataFrame) -> Path:
     fig, ax = plt.subplots(figsize=(10, 6))
     p = np.linspace(1.0, 2.0, 200)
-    yearly = table[table["term"] == "1-year"]
-    for _, r in yearly.iterrows():
+    same_util: dict[float, int] = {}
+    placed: list[tuple[float, int]] = []  # (x, label row) so nearby break-even labels don't overprint
+    for _, r in longest_term(table).iterrows():
         savings = (1 - p * r["breakeven_utilization"]) * 100
-        (line,) = ax.plot(p, savings, linewidth=2, label=f"{r['provider']} {r['model']}")
+        # Lines with identical economics (Bedrock Haiku and Sonnet) would hide each other; dash the later ones.
+        dup = same_util.get(r["breakeven_utilization"], 0)
+        same_util[r["breakeven_utilization"]] = dup + 1
+        (line,) = ax.plot(
+            p, savings, linewidth=2, linestyle="--" if dup else "-",
+            label=f"{r['provider']} {r['model']} ({r['term']})",
+        )
         if r["max_peak_to_avg"] > 1.0:
+            row = 0
+            while any(abs(r["max_peak_to_avg"] - px) < 0.04 and row == prow for px, prow in placed):
+                row += 1
+            placed.append((r["max_peak_to_avg"], row))
             ax.scatter([r["max_peak_to_avg"]], [0], color=line.get_color(), zorder=5)
             ax.annotate(
                 f"{r['max_peak_to_avg']:.2f}",
                 xy=(r["max_peak_to_avg"], 0),
-                xytext=(0, -14),
+                xytext=(0, -14 - 12 * row),
                 textcoords="offset points",
                 ha="center",
                 fontsize=8,
@@ -282,7 +303,7 @@ def plot_peak(table: pd.DataFrame) -> Path:
     ax.axhline(0, color="black", linewidth=1)
     ax.set_ylim(-60, 30)
     ax.set_xlim(1.0, 2.0)
-    ax.set_title("1-year commitment savings vs pay-as-you-go, by peak-to-average ratio")
+    ax.set_title("Longest-term commitment savings vs pay-as-you-go, by peak-to-average ratio")
     ax.set_xlabel("Peak-to-average ratio (peak-minute TPM ÷ average TPM)")
     ax.set_ylabel("Savings vs pay-as-you-go (%)  ·  below 0 = commitment costs more")
     ax.grid(True, alpha=0.3)

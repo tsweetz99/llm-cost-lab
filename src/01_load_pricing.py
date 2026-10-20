@@ -44,17 +44,21 @@ def create_schema(conn: sqlite3.Connection) -> None:
             source_url TEXT
         );
 
+        -- model_id is NULL when the unit's price does not depend on the model (Azure PTU,
+        -- GCP GSU) and set when it does (Bedrock Reserved tier). hourly_rate is $/hour per unit.
         CREATE TABLE commitment_terms (
             term_id INTEGER PRIMARY KEY,
             provider_id INTEGER NOT NULL REFERENCES providers(provider_id),
+            model_id INTEGER REFERENCES models(model_id),
             unit_name TEXT NOT NULL,
             term TEXT NOT NULL,
             hourly_rate REAL NOT NULL,
             note TEXT,
             effective_date TEXT NOT NULL,
-            source_url TEXT,
-            UNIQUE (provider_id, unit_name, term)
+            source_url TEXT
         );
+        CREATE UNIQUE INDEX commitment_terms_key
+            ON commitment_terms (provider_id, COALESCE(model_id, 0), unit_name, term);
 
         -- burndown_tpm is in input-equivalent tokens/min; output_burn is how many
         -- input tokens one output token consumes.

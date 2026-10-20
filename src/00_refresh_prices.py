@@ -32,7 +32,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent))
 from catalog import REFRESH_HINT, load_catalog, render_seed, seed_drift, set_fetched_on
 from config import CATALOG_PATH, DATA_DIR, SEED_PATH
-from verify import verify_on_demand as verify_catalog
+from verify import verify_catalog
 
 SNAPSHOT_PATH = DATA_DIR / "price_snapshot.json"
 # The Vertex AI pricing page is ~3.6 MB of HTML with its prices ~2.2 MB in, so a small cap

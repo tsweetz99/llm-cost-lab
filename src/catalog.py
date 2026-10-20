@@ -69,9 +69,11 @@ def render_seed(catalog: dict, fetched_on: str) -> str:
             for r in catalog["on_demand"]
         ) + ";",
         "",
-        "INSERT INTO commitment_terms (provider_id, unit_name, term, hourly_rate, note, effective_date, source_url) VALUES",
+        "INSERT INTO commitment_terms (provider_id, model_id, unit_name, term, hourly_rate, note, effective_date, source_url) VALUES",
         ",\n".join(
-            f"({provider_id[r['provider']]}, {q(r['unit_name'])}, {q(r['term'])}, {r['hourly_rate']:.4f}, "
+            f"({provider_id[r['provider']]}, "
+            f"{model_id[(r['provider'], r['model'])] if r.get('model') else 'NULL'}, "
+            f"{q(r['unit_name'])}, {q(r['term'])}, {r['hourly_rate']:.4f}, "
             f"{q(r.get('note', ''))}, {q(fetched_on)}, {q(r['source_url'])})"
             for r in catalog["commitment_terms"]
         ) + ";",

@@ -19,7 +19,7 @@ As organizations move real workloads onto large language models and AI infrastru
 
 For anyone reviewing this as a work sample, the project shows:
 
-- **Fluency in LLM/AI pricing models** across providers — Azure OpenAI PTUs (hourly vs. 1-month/1-year reservations), GCP's GSUs (1-week to 1-year terms), and pay-as-you-go token pricing across Azure, AWS Bedrock, and GCP — including how each provider's capacity units "burn down" faster for output tokens than input tokens, which changes the break-even math.
+- **Fluency in LLM/AI pricing models** across providers — Azure OpenAI PTUs (hourly vs. 1-month/1-year reservations), GCP's GSUs (1-week to 1-year terms), AWS Bedrock's Reserved-tier TPM commitments (1- and 3-month), and pay-as-you-go token pricing across Azure, AWS Bedrock, and GCP — including how each provider's capacity units "burn down" faster for output tokens than input tokens, which changes the break-even math.
 - **Commitment planning** — when a committed-capacity model beats on-demand, and the sustained utilization where that flips. For most terms modeled here it is close to saturation.
 - **Cost anomaly detection** — identifying unexpected spend patterns in usage data before they become billing surprises.
 - **Practical data engineering** — Python and SQL against a SQLite store, structured so pricing data loads cleanly and analyses are reproducible.
@@ -40,7 +40,7 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 |---|---|---|
 | **00 · Price refresh** | `data/price_catalog.json` is the pricing source of truth; `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it, verifies every on-demand rate and commitment price against the provider's live page before writing, and (`--check`) verifies the seed hasn't drifted from the catalog | ✅ Complete |
 | **01 · Pricing foundation** | Loads on-demand prices, commitment terms, and per-model unit capacity into SQLite (`src/01_load_pricing.py`); SQL queries to compare unit economics across providers | ✅ Complete |
-| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU and GCP GSU commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
+| **02 · Break-even analysis** | `src/02_breakeven.py` — models Azure PTU, GCP GSU, and AWS Bedrock Reserved-tier commitments vs. pay-as-you-go across terms, with burndown-adjusted capacity, and shows how much traffic peakiness (peak-to-average ratio) a commitment can tolerate before it stops paying off | ✅ Complete |
 | **03 · Cost anomaly detection** | `src/03_anomaly.py` — prices a 90-day usage series and flags spend spikes against a trailing robust baseline that is weekday/weekend-aware; `src/stress_test_anomaly.py` moves the incident around to test it | ✅ Complete |
 | **04 · Hybrid sizing** | `src/04_hybrid_sizing.py` — finds how much to commit when overflow can spill to pay-as-you-go, across illustrative weekly load shapes or your own hourly token CSV | ✅ Complete |
 
@@ -52,29 +52,32 @@ Three things make AI cost hard to govern, and each maps to a piece of this lab:
 - Monthly committed bill for one unit = `hourly_rate × 730`.
 - Break-even tokens = that bill ÷ blended $/token.
 - **Capacity is published in burndown tokens, not raw tokens.** Providers quote a unit's throughput in input-equivalent tokens per minute, and each output token burns several of them (Azure GPT-4o 4×, Gemini 3.1 Pro 6×, Gemini 2.5 Flash 9×). Real-token capacity for a mix with output share *s* is `burndown_tpm ÷ ((1 − s) + s × output_burn)`, times 60 × 730 for a month.
+- **Bedrock's Reserved tier** prices input and output TPM separately, with output at exactly 5× input (the on-demand price ratio), so a unit of 1K input-TPM-equivalent with an output burn of 5 reproduces its cost. Its price differs per model, so a commitment term can carry a model.
 - Break-even utilization = break-even tokens ÷ real-token capacity. Over 100% means one unit hits its ceiling before it can beat pay-as-you-go.
 - Burn multipliers track each model's output/input price ratio, so break-even utilization is nearly independent of the mix. The script flags any row where the two diverge by more than 15% (`burn_matches_price`), which usually means a data-entry error.
 - **Peakiness matters because a commitment must be sized for the peak.** With peak-to-average ratio *P* (peak-minute TPM ÷ average TPM), a unit sized to be fully busy at peak averages `1 ÷ P` utilization. So commitment cost ÷ pay-as-you-go cost = `P × break-even utilization`, and the highest *P* a commitment can tolerate is `1 ÷ break-even utilization` (`max_peak_to_avg`).
 
 **Key results** (one unit, 75/25 mix):
 
-| Unit · model | Break-even util., 1-month | Break-even util., 1-year | Max peak-to-avg, 1-year | One-unit capacity (M tokens/mo) |
-|---|---|---|---|---|
-| Azure PTU · GPT-4o | 95% | 81% | 1.24 | 62.6 |
-| Azure PTU · GPT-5 | ≈100% | 85% | 1.18 | 75.7 |
-| Azure PTU · GPT-4o-mini | 107% | 91% | 1.10 | 926.1 |
-| GCP GSU · Gemini 2.5 Flash | 135% | ≈100% | 1.00 | 2,356.4 |
-| GCP GSU · Gemini 3.1 Pro | 103% | 76% | 1.31 | 584.0 |
+| Unit · model | Break-even util., 1-month | 3-month | 1-year | Max peak-to-avg, longest term | One-unit capacity (M tokens/mo) |
+|---|---|---|---|---|---|
+| Azure PTU · GPT-4o | 95% | n/a | 81% | 1.24 | 62.6 |
+| Azure PTU · GPT-5 | ≈100% | n/a | 85% | 1.18 | 75.7 |
+| Azure PTU · GPT-4o-mini | 107% | n/a | 91% | 1.10 | 926.1 |
+| GCP GSU · Gemini 2.5 Flash | 135% | 120% | ≈100% | 1.00 | 2,356.4 |
+| GCP GSU · Gemini 3.1 Pro | 103% | 91% | 76% | 1.31 | 584.0 |
+| AWS Reserved TPM · Claude Haiku 4.5 | ≈100% | 90% | n/a | 1.11 | 21.9 |
+| AWS Reserved TPM · Claude Sonnet 4.6 | ≈100% | 90% | n/a | 1.11 | 21.9 |
 
-Utilization cells are the share of the unit's real-token capacity you must sustain before the commitment beats pay-as-you-go; over 100% means it never pays on a single unit. Shorter terms (hourly, 1-week) are worse in every case. Full tables: `outputs/breakeven_table.csv` and `outputs/peak_sensitivity.csv`.
+n/a means the provider offers no such term. Utilization cells are the share of the unit's real-token capacity you must sustain before the commitment beats pay-as-you-go; over 100% means it never pays on a single unit. Shorter terms (hourly, 1-week) are worse in every case. Full tables: `outputs/breakeven_table.csv` and `outputs/peak_sensitivity.csv`.
 
 ![Break-even by commitment unit and model](outputs/breakeven_analysis.png)
 
 Each panel is one unit and model in real dollars and tokens. The diagonal is pay-as-you-go; each horizontal line is a term's fixed monthly bill, drawn only up to the one-unit capacity (the dashed red line). The dot is where committing starts to pay, labeled with the utilization it needs. Terms whose break-even sits beyond the ceiling are listed above the panel as never paying on a single unit.
 
-![1-year commitment savings vs peak-to-average ratio](outputs/peak_to_average.png)
+![Longest-term commitment savings vs peak-to-average ratio](outputs/peak_to_average.png)
 
-A 1-year commitment sized to the peak only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average. Past that it costs more: at a peak-to-average ratio of 2, every 1-year term modeled costs 52–100% more than staying on demand. Module 04 relaxes the sized-to-peak assumption.
+A commitment sized to the peak, at its longest term (1-year, or 3-month for Bedrock), only beats pay-as-you-go while peak-minute traffic stays within roughly 10–30% of the average (Gemini 2.5 Flash: not at all). Past that it costs more: at a peak-to-average ratio of 2, every such commitment costs 52–100% more than staying on demand. Module 04 relaxes the sized-to-peak assumption.
 
 **Hybrid sizing (Module 04)**
 
@@ -85,7 +88,7 @@ Azure (spillover, opt-in) and Vertex AI (default) can serve traffic above a comm
 - Savings are never negative, and are capped at `(1 − u)` times the share of tokens the commitment serves, because the discount only applies to committed tokens.
 - Savings depend on the load shape and *u*, not on volume.
 
-1-year hybrid savings vs pay-as-you-go, on illustrative weekly hourly load shapes (*P* = hourly peak-to-average):
+Longest-term hybrid savings vs pay-as-you-go (1-year, or 3-month for Bedrock), on illustrative weekly hourly load shapes (*P* = hourly peak-to-average):
 
 | Unit · model | flat (P=1.00) | diurnal 24×7 (P=1.64) | business hours (P=2.57) | nightly batch (P=3.60) |
 |---|---|---|---|---|
@@ -94,10 +97,12 @@ Azure (spillover, opt-in) and Vertex AI (default) can serve traffic above a comm
 | Azure PTU · GPT-4o-mini | 9.1% | 4.0% | 2.3% | 4.4% |
 | GCP GSU · Gemini 2.5 Flash | 0.1% | 0.0% | 0.0% | 0.1% |
 | GCP GSU · Gemini 3.1 Pro | 23.9% | 12.6% | 6.2% | 11.5% |
+| AWS Reserved TPM · Claude Haiku 4.5 | 10.0% | 4.5% | 2.6% | 4.8% |
+| AWS Reserved TPM · Claude Sonnet 4.6 | 10.0% | 4.5% | 2.6% | 4.8% |
 
 ![Sized-to-peak vs hybrid savings by load shape](outputs/hybrid_sizing.png)
 
-Sized to the peak, the same non-flat shapes lose 25–260%; hybrid sizing never loses. But the optimal commitment covers only the base load (0.26–0.62× the average for non-flat shapes), so realistic savings are small: 2–13% for the Azure models and Gemini 3.1 Pro, versus up to 24% for a perfectly flat load. Commitments here are a modest discount on a steady floor, not a lever on total spend. The shapes are illustrative, not measurements: run `python src/04_hybrid_sizing.py --load-csv your_hourly_tokens.csv` (a `tokens` column) to size against your own load. Full results: `outputs/hybrid_sizing.csv`.
+Sized to the peak, the same non-flat shapes lose 25–260%; hybrid sizing never loses. But the optimal commitment covers only the base load (0.26–0.62× the average for non-flat shapes), so realistic savings are small: 2–13% for every unit with a real discount (the Azure models, Bedrock, and Gemini 3.1 Pro), versus up to 24% for a perfectly flat load. Commitments here are a modest discount on a steady floor, not a lever on total spend. The shapes are illustrative, not measurements: run `python src/04_hybrid_sizing.py --load-csv your_hourly_tokens.csv` (a `tokens` column) to size against your own load. Full results: `outputs/hybrid_sizing.csv`.
 
 **Anomaly detection (Module 03)**
 
@@ -123,17 +128,15 @@ False flags average 0.010 per 90-day × 8-model run with the day-class baseline 
 
 **Where the data comes from**
 
-Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is the source of truth. `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it (never hand-edit the seed) and checks the catalog against the live sources before it writes anything: each commitment price must still appear on its page, and each on-demand rate must match what the provider publishes (`src/verify.py` reads Azure's per-price `data-amount` attributes, Google's HTML tables, and AWS's price-list JSON, which the AWS pricing page itself fills its tables from). A mismatch, an unreachable page (network or TLS), and an oversized page are reported as separate failures. The seed and its date stamp are only rewritten when every live check passes, so the date means every price in the seed was verified, and a successful live run also records that date as the catalog's `fetched_on`. A drift guard enforces the "never hand-edit" rule: `python src/00_refresh_prices.py --check` (no network, no writes) and the database loader both fail, with a diff, if the committed seed is not exactly what the catalog renders to. Without it, a hand edit to the seed would be silently overwritten by the next refresh. Throughput and burn figures come from provider documentation and are not machine-checked; each row carries its `source_url`.
+Pricing is a dated lab snapshot, not a live feed. `data/price_catalog.json` is the source of truth. `src/00_refresh_prices.py` regenerates `data/seed_pricing.sql` from it (never hand-edit the seed) and checks the catalog against the live sources before it writes anything: each commitment price must still appear on its page, and each on-demand rate and each Bedrock Reserved-tier price must match what the provider publishes (`src/verify.py` reads Azure's per-price `data-amount` attributes, Google's HTML tables, and AWS's price-list JSON, which the AWS pricing page itself fills its tables from). A mismatch, an unreachable page (network or TLS), and an oversized page are reported as separate failures. The seed and its date stamp are only rewritten when every live check passes, so the date means every price in the seed was verified, and a successful live run also records that date as the catalog's `fetched_on`. A drift guard enforces the "never hand-edit" rule: `python src/00_refresh_prices.py --check` (no network, no writes) and the database loader both fail, with a diff, if the committed seed is not exactly what the catalog renders to. Without it, a hand edit to the seed would be silently overwritten by the next refresh. Throughput and burn figures come from provider documentation and are not machine-checked; each row carries its `source_url`.
 
 ## Known limitations
 
 - Text tokens on the ≤200k-context tier only. Prompt caching, batch discounts, long-context pricing, and non-text modalities are not modeled.
 - Module 02's peak-to-average analysis assumes no overflow; Module 04 assumes overflow is billed at the standard pay-as-you-go rate. Both ignore whole-unit rounding and provider minimum deployments (Azure's global PTU minimum is 15). Vertex AI spills whole requests rather than tokens, and Azure spillover must be configured.
 - The peak-to-average ratio and Module 04's load shapes are inputs, not measurements: the synthetic usage in Module 03 is daily, so it can't show intra-day peaks. Hourly shapes also understate minute-level peaks.
-- Azure and GCP commitments are modeled. AWS Bedrock is covered for pay-as-you-go pricing only; its Reserved tier is published but not yet modeled. Checked against AWS's docs and pricing page on 2026-10-19:
-  - **Provisioned Throughput** lists only Claude 3 Haiku and Claude 3 Sonnet as supported, none of the Claude models in this catalog. The pricing page says "For Provisioned Throughput pricing, please reach out to your account team," and the docs publish neither per-model-unit throughput nor any output-token weighting. Overflow behavior past the purchased capacity is not documented.
-  - The **Reserved tier** is documented: a fixed monthly price per 1K tokens-per-minute, 1- or 3-month terms, input and output capacity reserved separately (minimums 100K and 10K TPM), access through the account team, and automatic overflow to the Standard tier. Its prices are published, but not where I first looked: AWS's regional price-list offer file has no Reserved entries (only legacy Claude models, plus commitment SKUs for Amazon Nova and Titan), and the pricing page's HTML is empty because the page fills its tables from a separate price-list data file keyed by hashed IDs. Read that way (Global, US East), Claude Haiku 4.5 is $0.06 / $0.30 per hour per 1K input / output TPM on a 1-month term and $0.054 / $0.27 on 3 months, and Claude Sonnet 4.6 is $0.18 / $0.90 and $0.162 / $0.81 (Geo and in-region are 10% higher; Sonnet 5 is not offered). Output is priced at exactly 5x input, the on-demand price ratio, so at 100% utilization the 1-month price equals pay-as-you-go and the 3-month price is 10% cheaper: break-even utilization of 100% and 90%.
-  - Not yet modeled: the Reserved tier fits the existing unit-and-burn model (a unit of 1K input-TPM-equivalent with an output burn of 5), but Bedrock prices differ per model, which the model-independent `commitment_terms` table can't express yet.
+- Azure and GCP commitments and the AWS Bedrock Reserved tier are modeled. Bedrock Provisioned Throughput is not. Checked against AWS's docs and pricing page on 2026-10-19, it lists only Claude 3 Haiku and Claude 3 Sonnet as supported (none of this catalog's Claude models), the pricing page says "For Provisioned Throughput pricing, please reach out to your account team," and the docs publish neither per-model-unit throughput nor any output-token weighting. Overflow behavior past the purchased capacity is not documented.
+- The Bedrock Reserved tier is modeled at the Global cross-region price (Geo and in-region are 10% higher), for the two catalog models it is offered for (Haiku 4.5 and Sonnet 4.6; Sonnet 5 is not offered) on 1- and 3-month terms. Input and output TPM are reserved separately, with output priced at 5× input; the model assumes they are bought in proportion to the workload. Access is through the AWS account team, and the 100K input / 10K output TPM minimums are not enforced. Its prices live in the data file the AWS pricing page fills its tables from, not in the regional price-list offer file or the page's HTML, which is why they are easy to miss.
 - Gemini 3.1 Pro is a preview model, so its capacity figures may change.
 - Module 03 runs on synthetic usage data with two planted incidents. It demonstrates the method, and the stress-test rates describe this synthetic noise (12% lognormal), not production detection accuracy.
 - Module 03 models seasonality as weekday vs weekend only. Per-weekday patterns, holidays, and month-end effects are not handled, and the detector is one-sided (spikes, not drops).

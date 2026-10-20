@@ -1,4 +1,20 @@
 provider,model,unit,term,shape,shape_peak_to_avg,breakeven_utilization,optimal_commit_x_avg,share_of_tokens_committed,committed_avg_utilization,savings_hybrid,savings_sized_to_peak
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,1-month,flat,1.0,1.0,0.0,0.0,,0.0,0.0
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,1-month,business_hours,2.57,1.0,0.0,0.0,,0.0,-1.5727
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,1-month,diurnal_24x7,1.64,1.0,0.383,0.383,1.0,0.0,-0.6406
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,1-month,nightly_batch,3.6,1.0,0.48,0.48,1.0,0.0,-2.6
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,3-month,flat,1.0,0.9,1.0,1.0,1.0,0.1,0.1
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,3-month,business_hours,2.57,0.9,0.257,0.257,1.0,0.0257,-1.3155
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,3-month,diurnal_24x7,1.64,0.9,0.547,0.537,0.983,0.0452,-0.4766
+AWS Bedrock,Claude Haiku 4.5,Reserved 1K TPM,3-month,nightly_batch,3.6,0.9,0.48,0.48,1.0,0.048,-2.24
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,1-month,flat,1.0,1.0,0.0,0.0,,0.0,0.0
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,1-month,business_hours,2.57,1.0,0.0,0.0,,0.0,-1.5727
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,1-month,diurnal_24x7,1.64,1.0,0.383,0.383,1.0,0.0,-0.6406
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,1-month,nightly_batch,3.6,1.0,0.48,0.48,1.0,0.0,-2.6
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,3-month,flat,1.0,0.9,1.0,1.0,1.0,0.1,0.1
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,3-month,business_hours,2.57,0.9,0.257,0.257,1.0,0.0257,-1.3155
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,3-month,diurnal_24x7,1.64,0.9,0.547,0.537,0.983,0.0452,-0.4766
+AWS Bedrock,Claude Sonnet 4.6,Reserved 1K TPM,3-month,nightly_batch,3.6,0.9,0.48,0.48,1.0,0.048,-2.24
 Azure OpenAI,GPT-4o,PTU,1-month,flat,1.0,0.95,1.0,1.0,1.0,0.05,0.05
 Azure OpenAI,GPT-4o,PTU,1-month,business_hours,2.57,0.95,0.257,0.257,1.0,0.0129,-1.4441
 Azure OpenAI,GPT-4o,PTU,1-month,diurnal_24x7,1.64,0.95,0.434,0.433,0.996,0.0202,-0.5586
