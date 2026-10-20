@@ -20,7 +20,7 @@ INSERT INTO on_demand_pricing (model_id, input_per_mtok, output_per_mtok, effect
 (1, 2.50, 10.00, '2026-10-19', NULL, 'https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/'),
 (2, 1.25, 10.00, '2026-10-19', NULL, 'https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/'),
 (3, 0.15, 0.60, '2026-10-19', NULL, 'https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/'),
-(4, 3.00, 15.00, '2026-10-19', NULL, 'https://aws.amazon.com/bedrock/pricing/'),
+(4, 2.00, 10.00, '2026-10-19', NULL, 'https://aws.amazon.com/bedrock/pricing/'),
 (5, 3.00, 15.00, '2026-10-19', NULL, 'https://aws.amazon.com/bedrock/pricing/'),
 (6, 1.00, 5.00, '2026-10-19', NULL, 'https://aws.amazon.com/bedrock/pricing/'),
 (7, 2.00, 12.00, '2026-10-19', NULL, 'https://cloud.google.com/vertex-ai/generative-ai/pricing'),
