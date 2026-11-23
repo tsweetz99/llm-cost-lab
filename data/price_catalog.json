@@ -1,5 +1,5 @@
 {
-  "fetched_on": "2026-10-19",
+  "fetched_on": "2026-11-23",
   "notes": "Catalog is the refresh source of truth. src/00_refresh_prices.py verifies it against live sources before writing the seed: commitment terms with needles must still appear on their page, and rows with a verify spec (the on-demand rates and the Bedrock Reserved tier) must match what the provider publishes. unit_capacity rows are documentation-sourced (not machine-checked): burndown_tpm is in input-equivalent tokens per minute, output_burn is how many input tokens one output token consumes. A commitment term with a model applies only to that model; without one it applies to every model on the unit.",
   "on_demand": [
     {"provider": "Azure OpenAI", "model": "GPT-4o", "tier": "mid", "input_per_mtok": 2.5, "output_per_mtok": 10.0, "source_url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "confidence": "snapshot", "verify": {"kind": "azure_row", "url": "https://azure.microsoft.com/pricing/details/cognitive-services/openai-service/", "anchor": "GPT-4o-2024-1120 Global"}},
